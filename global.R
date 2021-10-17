@@ -1,6 +1,6 @@
 library(data.table);library(magrittr);library(parallel);library(fst);library(stats)
 
-setwd("/home/heejooko/ShinyApps/UKbiobank")
+#setwd("/home/js/ShinyApps/chi-hun.kim/UKbiobank-KCH")
 bd <- fst::read_fst("/home/heejooko/ShinyApps/UKbiobank/ukb47038.fst", as.data.table = T)
 
 a<-data.table()
@@ -217,14 +217,16 @@ a$stroke_date<-bd$f.42006.0.0
 
 #----------------------------------------------------------------------------------
 
-a<-a[,-c("ID","sysBP_automated_0","sysBP_manual_0","sysBP_automated_1","sysBP_manual_1","diaBP_automated_0","diaBP_manual_0","diaBP_automated_1","diaBP_manual_1")]
+out<-a[,-c("ID","sysBP_automated_0","sysBP_manual_0","sysBP_automated_1","sysBP_manual_1","diaBP_automated_0","diaBP_manual_0","diaBP_automated_1","diaBP_manual_1")]
 factor_vars<-c("smoking_status","alcohol_status","alcohol_addiction","DM_self","DM_diagnosed",
                "cholesterol_medication_0","BP_medication_0","insulin_medication_0",
                "cholesterol_medication_1","BP_medication_1","insulin_medication_1",
                "angina","heartattack_or_MI","ischaemicstroke","tia","depression","schizophrenia","maniabiopolar",
                "dementia","parkinson","asthma","COPD","endstage_renal_disease","motor_neuron_disease","MI","stroke")
-a[,(factor_vars):=lapply(.SD,as.factor),.SDcols=factor_vars]
+out[,(factor_vars):=lapply(.SD,as.factor),.SDcols=factor_vars]
 
-label.main <- jstable::mk.lev(a)
+out.label <- jstable::mk.lev(a)
 
 # label.main[variable == " ", `:=`(var_label = " ", val_label = c("","",""))]
+
+#saveRDS(list(data = out, label = out.label), "data.RDS")
