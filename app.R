@@ -1,13 +1,14 @@
 library(shiny);library(shinycustomloader);library(ggpubr);library(survival);library(jsmodule);library(DT)
 #source("global.R")
-
+library(data.table);library(magrittr)
 zz <- readRDS("data.RDS")
 out <- zz$data[, .SD, .SDcols = -names(zz$data)[sapply(zz$data, function(x){"Date" %in% class(x)})]]
 out.label <- jstable::mk.lev(out)
 
 
 nfactor.limit <- 20
-ui <- navbarPage("Basic statistics",
+
+ui <- navbarPage("UK biobank",
                  tabPanel("Data", icon = icon("table"),
                           sidebarLayout(
                             sidebarPanel(
