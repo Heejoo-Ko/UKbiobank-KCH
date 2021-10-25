@@ -190,34 +190,43 @@ names(bd)[grep("4282,20138,20240",names(bd))]
 #Outcomes------------------------------------------------------------------
 #Health related outcomes - Algorithmically defined outcomes
 
-a$dementia<-ifelse(is.na(bd$f.42018.0.0),NA,1) #all cause dementia
+a$dementia<-ifelse(is.na(bd$f.42018.0.0),0,1) #all cause dementia
 a$dementia_date<-bd$f.42018.0.0
 
-a$parkinson<-ifelse(is.na(bd$f.42032.0.0),NA,1)
+a$parkinson<-ifelse(is.na(bd$f.42032.0.0),0,1)
 a$parkinson_date<-bd$f.42032.0.0
 
-a$asthma<-ifelse(is.na(bd$f.42014.0.0),NA,1)
+a$asthma<-ifelse(is.na(bd$f.42014.0.0),0,1)
 a$asthma_date<-bd$f.42014.0.0
 
-a$COPD<-ifelse(is.na(bd$f.42016.0.0),NA,1)
+a$COPD<-ifelse(is.na(bd$f.42016.0.0),0,1)
 a$COPD_date<-bd$f.42016.0.0
 
-a$endstage_renal_disease<-ifelse(is.na(bd$f.42026.0.0),NA,1)
+a$endstage_renal_disease<-ifelse(is.na(bd$f.42026.0.0),0,1)
 a$endstage_renal_disease_date<-bd$f.42026.0.0
 
-a$motor_neuron_disease<-ifelse(is.na(bd$f.42028.0.0),NA,1)
+a$motor_neuron_disease<-ifelse(is.na(bd$f.42028.0.0),0,1)
 a$motor_neuron_disease_date<-bd$f.42028.0.0  
 
-a$MI<-ifelse(is.na(bd$f.42000.0.0),NA,1)
+a$MI<-ifelse(is.na(bd$f.42000.0.0),0,1)
 a$MI_date<-bd$f.42000.0.0
 
-a$stroke<-ifelse(is.na(bd$f.42006.0.0),NA,1)
+a$stroke<-ifelse(is.na(bd$f.42006.0.0),0,1)
 a$stroke_date<-bd$f.42006.0.0
+
+
+days <- sapply(c("dementia", "parkinson", "asthma", "motor_neuron", "MI", "stroke"), function(v){
+  as.integer(pmin(as.IDate("2019-03-31"), a[[paste0(v, "_date")]], na.rm = T) - a[["visit_date_0"]])
+}) %>% do.call(cbind, .)
+colnames(days) <- paste0(colnames(days), "_day")
+
 
 
 #----------------------------------------------------------------------------------
 
-out<-a[,-c("ID","sysBP_automated_0","sysBP_manual_0","sysBP_automated_1","sysBP_manual_1","diaBP_automated_0","diaBP_manual_0","diaBP_automated_1","diaBP_manual_1")]
+out<-cbind(a[,-c("ID","sysBP_automated_0","sysBP_manual_0","sysBP_automated_1","sysBP_manual_1","diaBP_automated_0","diaBP_manual_0","diaBP_automated_1","diaBP_manual_1")],
+           days)
+
 factor_vars<-c("sex", "smoking_status","alcohol_status","alcohol_addiction","DM_self","DM_diagnosed",
                "cholesterol_medication_0","BP_medication_0","insulin_medication_0",
                "cholesterol_medication_1","BP_medication_1","insulin_medication_1",
