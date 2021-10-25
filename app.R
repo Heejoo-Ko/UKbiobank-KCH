@@ -405,7 +405,7 @@ server <- function(input, output, session) {
     ) %>% formatStyle("sig", target = 'row',backgroundColor = styleEqual("**", 'yellow'))
   })
   
-  out_cox <- callModule(coxModule, "cox", data = data, data_label = data.label, data_varStruct = NULL, default.unires = T, nfactor.limit = nfactor.limit)
+  out_cox <- callModule(coxModule, "cox", data = data, data_label = data.label, data_varStruct = NULL, default.unires = F, nfactor.limit = nfactor.limit)
   
   output$coxtable <- renderDT({
     hide = which(colnames(out_cox()$table) == c("sig"))
