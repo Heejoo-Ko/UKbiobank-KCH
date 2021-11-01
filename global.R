@@ -477,11 +477,16 @@ a$stroke_outcome<-ifelse(is.na(bd$f.42006.0.0),0,1)
 a$stroke_outcome_date<-bd$f.42006.0.0
 
 
-days <- sapply(c("dementia", "parkinson", "asthma", "COPD", "endstage_renal_disease", "motor_neuron", "MI", "stroke"), function(v){
-  as.integer(pmin(as.IDate("2019-03-31"), a[[paste0(v, "_outcome_date")]], na.rm = T) - a[["visit_date_0"]])
-}) %>% do.call(cbind, .)
-colnames(days) <- paste0(colnames(days), "_day")
+#Death
 
+a$death_date<-bd$f.40000.0.0
+
+days <- sapply(c("dementia", "parkinson", "asthma", "COPD", "endstage_renal_disease", "motor_neuron", "MI", "stroke"),
+               function(v){
+                 as.integer(ifelse(!is.na(a[[paste0(v, "_outcome_date")]]),a[[paste0(v, "_outcome_date")]],
+                                   ifelse(!is.na(a[["death_date"]]),a[["death_date"]],as.IDate("2019-03-31")))) - as.integer(a[["visit_date_0"]])
+                }) %>% do.call(cbind, .)
+colnames(days) <- paste0(colnames(days), "_day")
 
 
 #----------------------------------------------------------------------------------
