@@ -4,10 +4,16 @@ library(data.table);library(magrittr);library(jstable)
 nfactor.limit <- 20  ## For module
 
 ## Load RDS data
-zz <- readRDS("data.RDS")
-out <- zz$data[, .SD, .SDcols = -names(zz$data)[sapply(zz$data, function(x){"Date" %in% class(x)})]]
-out.label <- mk.lev(out)
-factor_vars <- names(out)[sapply(out, class) == "factor"]
+#zz <- readRDS("data.RDS")
+zz <- fst::read_fst("data.fst", as.data.table = T)
+
+info <- readRDS("info.RDS")
+factor_vars <- info$factor_vars
+zz[, (factor_vars) := lapply(.SD, factor), .SDcols = factor_vars]
+
+out <- zz[, .SD, .SDcols = -names(zz)[sapply(zz, function(x){"Date" %in% class(x)})]]
+out.label <- info$label
+#factor_vars <- names(out)[sapply(out, class) == "factor"]
 
 
 ui <- navbarPage("UK biobank",

@@ -1,6 +1,6 @@
 library(data.table);library(magrittr);library(parallel);library(fst);library(stats);library(imputeTS);library(readxl)
 
-#=setwd("/home/js/ShinyApps/chi-hun.kim/UKbiobank-KCH")
+#setwd("/home/js/ShinyApps/chi-hun.kim/UKbiobank-KCH")
 bd <- fst::read_fst("/home/heejooko/ShinyApps/UKbiobank/ukb47038.fst", as.data.table = T)
 
 a<-data.table()
@@ -523,5 +523,10 @@ out[,(factor_vars):=lapply(.SD,as.factor),.SDcols=factor_vars]
 out.label <- jstable::mk.lev(a)
 
 # label.main[variable == " ", `:=`(var_label = " ", val_label = c("","",""))]
+#saveRDS(list(data = out, label = out.label), "data.RDS")
 
-# saveRDS(list(data = out, label = out.label), "data.RDS")
+
+#fst::write_fst(out, "data.fst");saveRDS(list(factor_vars = factor_vars, label= out.label), "info.RDS")
+
+
+
