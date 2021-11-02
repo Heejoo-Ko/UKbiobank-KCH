@@ -5,16 +5,16 @@ nfactor.limit <- 20  ## For module
 
 ## Load RDS data
 #zz <- readRDS("data.RDS")
-zz <- fst::read_fst("data.fst", as.data.table = T)
+out <- fst::read_fst("data.fst", as.data.table = T) %>% .[, .SD, .SDcols = -names(.)[sapply(., function(x){"Date" %in% class(x)})]]
 
 info <- readRDS("info.RDS")
 factor_vars <- info$factor_vars
-zz[, (factor_vars) := lapply(.SD, factor), .SDcols = factor_vars]
+out[, (factor_vars) := lapply(.SD, factor), .SDcols = factor_vars]
 
-out <- zz[, .SD, .SDcols = -names(zz)[sapply(zz, function(x){"Date" %in% class(x)})]]
 out.label <- info$label
 #factor_vars <- names(out)[sapply(out, class) == "factor"]
 
+vars.surv <- c("dementia", "parkinson", "asthma", "COPD", "endstage_renal_disease", "MI", "stroke")
 
 ui <- navbarPage("UK biobank",
                  tabPanel("Data", icon = icon("table"),
@@ -80,6 +80,7 @@ ui <- navbarPage("UK biobank",
                             tabPanel("Cox model",
                                      sidebarLayout(
                                        sidebarPanel(
+                                         checkboxGroupInput("negday_cox", "Exclude day <= 0", vars.surv, vars.surv[1], inline = T),
                                          coxUI("cox")
                                        ),
                                        mainPanel(
@@ -115,6 +116,7 @@ ui <- navbarPage("UK biobank",
                             tabPanel("Kaplan-meier plot",
                                      sidebarLayout(
                                        sidebarPanel(
+                                         checkboxGroupInput("negday_kap", "Exclude day <= 0", vars.surv, vars.surv[1], inline = T),
                                          kaplanUI("kaplan")
                                        ),
                                        mainPanel(
@@ -142,6 +144,7 @@ ui <- navbarPage("UK biobank",
                             tabPanel("Time-dependent ROC",
                                      sidebarLayout(
                                        sidebarPanel(
+                                         checkboxGroupInput("negday_timeroc", "Exclude day <= 0", vars.surv, vars.surv[1], inline = T),
                                          timerocUI("timeroc")
                                        ),
                                        mainPanel(
@@ -411,7 +414,20 @@ server <- function(input, output, session) {
     ) %>% formatStyle("sig", target = 'row',backgroundColor = styleEqual("**", 'yellow'))
   })
   
-  out_cox <- callModule(coxModule, "cox", data = data, data_label = data.label, data_varStruct = NULL, default.unires = F, nfactor.limit = nfactor.limit)
+  
+  data.cox <- reactive({
+    if (!is.null(input$negday_cox)){
+      dd <- data()
+      for (v in input$negday_cox){
+        dd <- dd[get(paste0(v, "_day")) > 0]
+      }
+      return(dd)
+    } else{
+      return(data())
+    }
+  })
+  
+  out_cox <- callModule(coxModule, "cox", data = data.cox, data_label = data.label, data_varStruct = NULL, default.unires = F, nfactor.limit = nfactor.limit)
   
   output$coxtable <- renderDT({
     hide = which(colnames(out_cox()$table) == c("sig"))
@@ -436,7 +452,19 @@ server <- function(input, output, session) {
     print(out_scatter())
   })
   
-  out_kaplan <- callModule(kaplanModule, "kaplan", data = data, data_label = data.label, data_varStruct = NULL, nfactor.limit = nfactor.limit)
+  data.kap <- reactive({
+    if (!is.null(input$negday_kap)){
+      dd <- data()
+      for (v in input$negday_kap){
+        dd <- dd[get(paste0(v, "_day")) > 0]
+      }
+      return(dd)
+    } else{
+      return(data())
+    }
+  })
+  
+  out_kaplan <- callModule(kaplanModule, "kaplan", data = data.kap, data_label = data.label, data_varStruct = NULL, nfactor.limit = nfactor.limit)
   
   output$kaplan_plot <- renderPlot({
     print(out_kaplan())
@@ -454,8 +482,19 @@ server <- function(input, output, session) {
               options = c(jstable::opt.tbreg("roctable"), list(scrollX = TRUE)))
   })
   
+  data.timeroc <- reactive({
+    if (!is.null(input$negday_timeroc)){
+      dd <- data()
+      for (v in input$negday_timeroc){
+        dd <- dd[get(paste0(v, "_day")) > 0]
+      }
+      return(dd)
+    } else{
+      return(data())
+    }
+  })
   
-  out_timeroc <- callModule(timerocModule, "timeroc", data = data, data_label = data.label, data_varStruct = NULL, nfactor.limit = nfactor.limit)
+  out_timeroc <- callModule(timerocModule, "timeroc", data = data.timeroc, data_label = data.label, data_varStruct = NULL, nfactor.limit = nfactor.limit)
   
   output$plot_timeroc <- renderPlot({
     print(out_timeroc()$plot)
