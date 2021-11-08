@@ -3,16 +3,7 @@ library(shiny);library(shinycustomloader);library(ggpubr);library(survival);libr
 library(data.table);library(magrittr);library(jstable)
 nfactor.limit <- 20  ## For module
 
-## Load RDS data
-#zz <- readRDS("data.RDS")
-out <- fst::read_fst("data.fst", as.data.table = T) 
 
-info <- readRDS("info.RDS")
-factor_vars <- info$factor_vars
-out[, (factor_vars) := lapply(.SD, factor), .SDcols = factor_vars]
-
-out.label <- info$label
-#factor_vars <- names(out)[sapply(out, class) == "factor"]
 varlist <- list(
   MetS = c("MetS_NCEPATPIII_0","MetS_NCEPATPIII_1","MetS_IDF_0","MetS_IDF_1", "MetS_NCEPATPIII_count_0", "MetS_NCEPATPIII_count_1", "MetS_IDF_count_0", "MetS_IDF_count_1"),
   Event = paste0(c("dementia", "parkinson", "asthma", "COPD", "endstage_renal_disease", "motor_neuron_disease", "MI", "stroke"), "_outcome"),
@@ -46,7 +37,18 @@ varlist <- list(
   MRI = grep("dMRI_", names(a), value = T)
 )
 
-vars.surv <- c("dementia", "parkinson", "asthma", "COPD", "motor_neuron_disease", "endstage_renal_disease", "MI", "stroke")
+
+## Load fst data: Except MRI
+varlist <- varlist[names(varlist)[1:4]]
+out <- fst::read_fst("data.fst", as.data.table = T, columns = unlist(varlist)) 
+
+info <- readRDS("info.RDS")
+factor_vars <- info$factor_vars
+out[, (factor_vars) := lapply(.SD, factor), .SDcols = factor_vars]
+
+out.label <- info$label
+
+vars.surv <- sapply(strsplit(varlist$Event, "_"), `[[`, 1)
 
 ui <- navbarPage("UK biobank",
                  tabPanel("Data", icon = icon("table"),
@@ -416,7 +418,7 @@ server <- function(input, output, session) {
     return(out.tb1)
   })
   
-  out_linear <- callModule(regressModule2, "linear", data = data, data_label = data.label, data_varStruct = reactive(varlist[names(varlist)[c(2, 3, 1, 4, 5)]]), nfactor.limit = nfactor.limit, default.unires = F)
+  out_linear <- callModule(regressModule2, "linear", data = data, data_label = data.label, data_varStruct = reactive(varlist[names(varlist)[c(2, 3, 1, 4)]]), nfactor.limit = nfactor.limit, default.unires = F)
   
   output$lineartable <- renderDT({
     hide = which(colnames(out_linear()$table) == "sig")
@@ -433,7 +435,7 @@ server <- function(input, output, session) {
     paste("<b>", out_linear()$warning, "</b>")
   })
   
-  out_logistic <- callModule(logisticModule2, "logistic", data = data, data_label = data.label, data_varStruct = reactive(varlist[names(varlist)[c(1, 4, 5, 2, 3)]]), nfactor.limit = nfactor.limit, default.unires = F)
+  out_logistic <- callModule(logisticModule2, "logistic", data = data, data_label = data.label, data_varStruct = reactive(varlist[names(varlist)[c(1, 4, 2, 3)]]), nfactor.limit = nfactor.limit, default.unires = F)
   
   output$logistictable <- renderDT({
     hide = which(colnames(out_logistic()$table) == "sig")
@@ -459,7 +461,7 @@ server <- function(input, output, session) {
     }
   })
   
-  out_cox <- callModule(coxModule, "cox", data = data.cox, data_label = data.label, data_varStruct = reactive(varlist[names(varlist)[c(2, 3, 1, 4, 5)]]), default.unires = F, nfactor.limit = nfactor.limit)
+  out_cox <- callModule(coxModule, "cox", data = data.cox, data_label = data.label, data_varStruct = reactive(varlist[names(varlist)[c(2, 3, 1, 4)]]), default.unires = F, nfactor.limit = nfactor.limit)
   
   output$coxtable <- renderDT({
     hide = which(colnames(out_cox()$table) == c("sig"))
@@ -472,13 +474,13 @@ server <- function(input, output, session) {
   })
   
   
-  out_ggpairs <- callModule(ggpairsModule2, "ggpairs", data = data, data_label = data.label, data_varStruct = reactive(varlist[names(varlist)[c(2, 3, 1, 4, 5)]]), nfactor.limit = nfactor.limit)
+  out_ggpairs <- callModule(ggpairsModule2, "ggpairs", data = data, data_label = data.label, data_varStruct = reactive(varlist[names(varlist)[c(2, 3, 1, 4)]]), nfactor.limit = nfactor.limit)
   
   output$ggpairs_plot <- renderPlot({
     print(out_ggpairs())
   })
   
-  out_scatter <- scatterServer("scatter", data = data, data_label = data.label, data_varStruct = reactive(varlist[names(varlist)[c(2, 3, 1, 4, 5)]]), nfactor.limit = nfactor.limit)
+  out_scatter <- scatterServer("scatter", data = data, data_label = data.label, data_varStruct = reactive(varlist[names(varlist)[c(2, 3, 1, 4)]]), nfactor.limit = nfactor.limit)
   
   output$scatter_plot <- renderPlot({
     print(out_scatter())
@@ -496,13 +498,13 @@ server <- function(input, output, session) {
     }
   })
   
-  out_kaplan <- callModule(kaplanModule, "kaplan", data = data.kap, data_label = data.label, data_varStruct = reactive(varlist[names(varlist)[c(2, 3, 1, 4, 5)]]), nfactor.limit = nfactor.limit)
+  out_kaplan <- callModule(kaplanModule, "kaplan", data = data.kap, data_label = data.label, data_varStruct = reactive(varlist[names(varlist)[c(2, 3, 1, 4)]]), nfactor.limit = nfactor.limit)
   
   output$kaplan_plot <- renderPlot({
     print(out_kaplan())
   })
   
-  out_roc <- callModule(rocModule, "roc", data = data, data_label = data.label, data_varStruct = reactive(varlist[names(varlist)[c(1, 4, 5, 2, 3)]]), nfactor.limit = nfactor.limit)
+  out_roc <- callModule(rocModule, "roc", data = data, data_label = data.label, data_varStruct = reactive(varlist[names(varlist)[c(1, 4, 2, 3)]]), nfactor.limit = nfactor.limit)
   
   output$plot_roc <- renderPlot({
     print(out_roc()$plot)
@@ -526,7 +528,7 @@ server <- function(input, output, session) {
     }
   })
   
-  out_timeroc <- callModule(timerocModule, "timeroc", data = data.timeroc, data_label = data.label, data_varStruct = reactive(varlist[names(varlist)[c(2, 3, 1, 4, 5)]]), nfactor.limit = nfactor.limit)
+  out_timeroc <- callModule(timerocModule, "timeroc", data = data.timeroc, data_label = data.label, data_varStruct = reactive(varlist[names(varlist)[c(2, 3, 1, 4)]]), nfactor.limit = nfactor.limit)
   
   output$plot_timeroc <- renderPlot({
     print(out_timeroc()$plot)
