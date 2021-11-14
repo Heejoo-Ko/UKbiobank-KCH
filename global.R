@@ -628,4 +628,4 @@ out.label <- jstable::mk.lev(out)
 #saveRDS(list(data = out, label = out.label), "data.RDS")
 
 
-#fst::write_fst(out, "data.fst");saveRDS(list(factor_vars = factor_vars, label= out.label), "info.RDS")
+#fst::write_fst(out, "data.fst");saveRDS(list(factor_vars = factor_vars, label= out.label, varlist = varlist), "info.RDS")
