@@ -212,43 +212,43 @@ a$DM_3<-ifelse(a$DM_diagnosed_3==1 | a$insulin_medication_3==1,1,0)
 
 
 a$MetS_NCEPATPIII_count_0<-as.integer(a$DM_0)+
-                            as.integer(a$sysBP_0>=130 | a$diaBP_0>=85 | a$BP_medication_0==1)+
-                            as.integer((a$sex=="F" & a$WC_0>=88) | (a$sex=="M" & a$WC_0>=102))+
-                            as.integer(a$TG_0>=1.7 & ((a$sex=="M" & a$HDL_0<1.03) | (a$sex=="F" & a$HDL_0<1.29)))
+  as.integer(a$sysBP_0>=130 | a$diaBP_0>=85 | a$BP_medication_0==1)+
+  as.integer((a$sex=="F" & a$WC_0>=88) | (a$sex=="M" & a$WC_0>=102))+
+  as.integer(a$TG_0>=1.7 & ((a$sex=="M" & a$HDL_0<1.03) | (a$sex=="F" & a$HDL_0<1.29)))
 a$MetS_NCEPATPIII_count_1<-as.integer(a$DM_1)+
-                            as.integer(a$sysBP_1>=130 | a$diaBP_1>=85 | a$BP_medication_1==1)+
-                            as.integer((a$sex=="F" & a$WC_1>=88) | (a$sex=="M" & a$WC_1>=102))+
-                            as.integer(a$TG_1>=1.7 & ((a$sex=="M" & a$HDL_1<1.03) | (a$sex=="F" & a$HDL_1<1.29)))
+  as.integer(a$sysBP_1>=130 | a$diaBP_1>=85 | a$BP_medication_1==1)+
+  as.integer((a$sex=="F" & a$WC_1>=88) | (a$sex=="M" & a$WC_1>=102))+
+  as.integer(a$TG_1>=1.7 & ((a$sex=="M" & a$HDL_1<1.03) | (a$sex=="F" & a$HDL_1<1.29)))
 a$MetS_NCEPATPIII_0<-ifelse(a$MetS_NCEPATPIII_count_0>=3,1,0)
 a$MetS_NCEPATPIII_1<-ifelse(a$MetS_NCEPATPIII_count_1>=3,1,0)
 
 a$MetS_IDF_count_0<-as.integer(a$DM_0)+
-                    as.integer(a$sysBP_0>=130 | a$diaBP_0>=85 | a$BP_medication_0==1)+
-                    as.integer((a$sex=="F" & a$WC_0>=80) | (a$sex=="M" & a$WC_0>=94))+
-                    as.integer((a$TG_0>=1.7 & ((a$sex=="M" & a$HDL_0<1.03) | (a$sex=="F" & a$HDL_0<1.29))) | (a$cholesterol_medication_0==1))
+  as.integer(a$sysBP_0>=130 | a$diaBP_0>=85 | a$BP_medication_0==1)+
+  as.integer((a$sex=="F" & a$WC_0>=80) | (a$sex=="M" & a$WC_0>=94))+
+  as.integer((a$TG_0>=1.7 & ((a$sex=="M" & a$HDL_0<1.03) | (a$sex=="F" & a$HDL_0<1.29))) | (a$cholesterol_medication_0==1))
 a$MetS_IDF_count_1<-as.integer(a$DM_1)+
-                    as.integer(a$sysBP_1>=130 | a$diaBP_1>=85 | a$BP_medication_1==1)+
-                    as.integer((a$sex=="F" & a$WC_1>=80) | (a$sex=="M" & a$WC_1>=94))+
-                    as.integer((a$TG_1>=1.7 & ((a$sex=="M" & a$HDL_1<1.03) | (a$sex=="F" & a$HDL_1<1.29))) | (a$cholesterol_medication_1==1))
+  as.integer(a$sysBP_1>=130 | a$diaBP_1>=85 | a$BP_medication_1==1)+
+  as.integer((a$sex=="F" & a$WC_1>=80) | (a$sex=="M" & a$WC_1>=94))+
+  as.integer((a$TG_1>=1.7 & ((a$sex=="M" & a$HDL_1<1.03) | (a$sex=="F" & a$HDL_1<1.29))) | (a$cholesterol_medication_1==1))
 
 criteria_c<-((a$sex=="F" & a$WC_0>=80) | (a$sex=="M" & a$WC_0>=94))
 criteria_count_abd<-as.integer(a$DM_0)+
-                    as.integer(a$sysBP_0>=130 | a$diaBP_0>=85 | a$BP_medication_0==1)+
-                    as.integer((a$TG_0>=1.7 & ((a$sex=="M" & a$HDL_0<1.03) | (a$sex=="F" & a$HDL_0<1.29))) | (a$cholesterol_medication_0==1))
+  as.integer(a$sysBP_0>=130 | a$diaBP_0>=85 | a$BP_medication_0==1)+
+  as.integer((a$TG_0>=1.7 & ((a$sex=="M" & a$HDL_0<1.03) | (a$sex=="F" & a$HDL_0<1.29))) | (a$cholesterol_medication_0==1))
 a$MetS_IDF_0<-ifelse(is.na(criteria_c) | is.na(criteria_count_abd),NA,ifelse(criteria_c & criteria_count_abd>=2,1,0))
 
 criteria_c<-((a$sex=="F" & a$WC_1>=80) | (a$sex=="M" & a$WC_1>=94))
 criteria_count_abd<-as.integer(a$DM_1)+
-                    as.integer(a$sysBP_1>=130 | a$diaBP_1>=85 | a$BP_medication_1==1)+
-                    as.integer((a$TG_1>=1.7 & ((a$sex=="M" & a$HDL_1<1.03) | (a$sex=="F" & a$HDL_1<1.29))) | (a$cholesterol_medication_1==1))
+  as.integer(a$sysBP_1>=130 | a$diaBP_1>=85 | a$BP_medication_1==1)+
+  as.integer((a$TG_1>=1.7 & ((a$sex=="M" & a$HDL_1<1.03) | (a$sex=="F" & a$HDL_1<1.29))) | (a$cholesterol_medication_1==1))
 a$MetS_IDF_1<-ifelse(is.na(criteria_c) | is.na(criteria_count_abd),NA,ifelse(criteria_c & criteria_count_abd>=2,1,0))
 
 
-sapply(c("MetS_NCEPATPIII_count_0","MetS_NCEPATPIII_count_1","MetS_IDF_count_0","MetS_IDF_count_1"),
-       function(v){a[[v]] %>% as.factor %>% summary})
-
-sapply(c("MetS_NCEPATPIII_0","MetS_NCEPATPIII_1","MetS_IDF_0","MetS_IDF_1"),
-       function(v){a[[v]] %>% as.factor %>% summary})
+# sapply(c("MetS_NCEPATPIII_count_0","MetS_NCEPATPIII_count_1","MetS_IDF_count_0","MetS_IDF_count_1"),
+#        function(v){a[[v]] %>% as.factor %>% summary})
+# 
+# sapply(c("MetS_NCEPATPIII_0","MetS_NCEPATPIII_1","MetS_IDF_0","MetS_IDF_1"),
+#        function(v){a[[v]] %>% as.factor %>% summary})
 
 
 #Biomarkers
@@ -259,6 +259,63 @@ a$IGF1_1<-bd$f.30770.1.0
 #SHBG [nmol/L]
 a$SHBG_0<-bd$f.30830.0.0
 a$SHBG_1<-bd$f.30830.1.0
+
+#education------------------------------------------------------------------
+#qualifications
+# 1	College or University degree
+# 2	A levels/AS levels or equivalent
+# 3	O levels/GCSEs or equivalent
+# 4	CSEs or equivalent
+# 5	NVQ or HND or HNC or equivalent
+# 6	Other professional qualifications eg: nursing, teaching
+# -7	None of the above
+# -3	Prefer not to answer
+
+temp<-paste0(bd$f.6138.0.0," ",bd$f.6138.0.1," ",bd$f.6138.0.2," ",bd$f.6138.0.3," ",bd$f.6138.0.4," ",bd$f.6138.0.5)
+a$education_college_university_0<-ifelse(grepl("1",temp),1,0)
+a$education_A_AS_0<-ifelse(grepl("2",temp),1,0)
+a$education_O_GCSEs_0<-ifelse(grepl("3",temp),1,0)
+a$education_CSEs_0<-ifelse(grepl("4",temp),1,0)
+a$education_NVQ_HND_HNC_0<-ifelse(grepl("5",temp),1,0)
+a$education_other_professional_0<-ifelse(grepl("6",temp),1,0)
+
+temp<-paste0(bd$f.6138.1.0," ",bd$f.6138.1.1," ",bd$f.6138.1.2," ",bd$f.6138.1.3," ",bd$f.6138.1.4," ",bd$f.6138.1.5)
+a$education_college_university_1<-ifelse(grepl("1",temp),1,0)
+a$education_A_AS_1<-ifelse(grepl("2",temp),1,0)
+a$education_O_GCSEs_1<-ifelse(grepl("3",temp),1,0)
+a$education_CSEs_1<-ifelse(grepl("4",temp),1,0)
+a$education_NVQ_HND_HNC_1<-ifelse(grepl("5",temp),1,0)
+a$education_other_professional_1<-ifelse(grepl("6",temp),1,0)
+
+temp<-paste0(bd$f.6138.2.0," ",bd$f.6138.2.1," ",bd$f.6138.2.2," ",bd$f.6138.2.3," ",bd$f.6138.2.4," ",bd$f.6138.2.5)
+a$education_college_university_2<-ifelse(grepl("1",temp),1,0)
+a$education_A_AS_2<-ifelse(grepl("2",temp),1,0)
+a$education_O_GCSEs_2<-ifelse(grepl("3",temp),1,0)
+a$education_CSEs_2<-ifelse(grepl("4",temp),1,0)
+a$education_NVQ_HND_HNC_2<-ifelse(grepl("5",temp),1,0)
+a$education_other_professional_2<-ifelse(grepl("6",temp),1,0)
+
+temp<-paste0(bd$f.6138.3.0," ",bd$f.6138.3.1," ",bd$f.6138.3.2," ",bd$f.6138.3.3," ",bd$f.6138.3.4," ",bd$f.6138.3.5)
+a$education_college_university_3<-ifelse(grepl("1",temp),1,0)
+a$education_A_AS_3<-ifelse(grepl("2",temp),1,0)
+a$education_O_GCSEs_3<-ifelse(grepl("3",temp),1,0)
+a$education_CSEs_3<-ifelse(grepl("4",temp),1,0)
+a$education_NVQ_HND_HNC_3<-ifelse(grepl("5",temp),1,0)
+a$education_other_professional_3<-ifelse(grepl("6",temp),1,0)
+
+#Age completed full time education
+# -2	Never went to school
+# -1	Do not know
+# -3	Prefer not to answer
+
+a$education_school_never_0<-ifelse(grepl("-2",bd$f.845.0.0),1,0)
+a$education_age_completed_full_time_education_0<-ifelse(bd$f.845.0.0<0,NA,bd$f.845.0.0)
+
+a$education_school_never_1<-ifelse(grepl("-2",bd$f.845.1.0),1,0)
+a$education_age_completed_full_time_education_1<-ifelse(bd$f.845.0.0<0,NA,bd$f.845.1.0)
+
+a$education_school_never_2<-ifelse(grepl("-2",bd$f.845.0.0),1,0)
+a$education_age_completed_full_time_education_2<-ifelse(bd$f.845.0.0<0,NA,bd$f.845.2.0)
 
 
 #Other past medical conditions------------------------------------------------------------------
@@ -422,7 +479,7 @@ categorynames<-c("dMRI_skeleton","dMRI_weighted_means",
                  "T1_Freesurfer_desikan_gw","T1_Freesurfer_desikan_pial","T1_Freesurfer_desikan_white","T1_Freesurfer_subsegmentation")
 
 mrivars <- excel_sheets("brain mri variables.xlsx") %>% 
-                lapply(function(x){read_excel("brain mri variables.xlsx",sheet=x)})
+  lapply(function(x){read_excel("brain mri variables.xlsx",sheet=x)})
 
 #5:12 데이터 누락있음. 원래는 1:12까지 all.
 for(i in 1:4){
@@ -520,13 +577,19 @@ varlist <- list(
            "heartattack_diagnosed_1","angina_diagnosed_1","stroke_diagnosed_1","HT_diagnosed_1",
            "heartattack_diagnosed_2","angina_diagnosed_2","stroke_diagnosed_2","HT_diagnosed_2",
            paste0("age_heartattack_diagnosed_", 0:3), paste0("age_angina_diagnosed_", 0:3), paste0("age_stroke_diagnosed_", 0:3),
-           paste0("age_HT_diagnosed_", 0:3)),
-  MRI = grep("dMRI_", names(a), value = T)
+           paste0("age_HT_diagnosed_", 0:3),
+           paste0("education_college_university_",0:3),
+           paste0("education_A_AS_",0:3),
+           paste0("education_O_GCSEs_",0:3),
+           paste0("education_CSEs_",0:3),
+           paste0("education_NVQ_HND_HNC_",0:3),
+           paste0("education_other_professional_",0:3),
+           paste0("education_school_never_",0:2),
+           paste0("education_age_completed_full_time_education_",0:2)),
+  MRI = grep(pattern='dMRI_|T1_', x=names(a), value = T)
 )
 
 out <- cbind(a, days)[, .SD, .SDcols = unlist(varlist)]
-
-
 
 factor_vars<-c("sex", "smoking_status_0","smoking_status_1","smoking_status_2","smoking_status_3",
                "alcohol_status_0","alcohol_status_1","alcohol_status_2","alcohol_status_3",
@@ -549,7 +612,14 @@ factor_vars<-c("sex", "smoking_status_0","smoking_status_1","smoking_status_2","
                "heartattack_diagnosed_0","angina_diagnosed_0","stroke_diagnosed_0","HT_diagnosed_0",
                "heartattack_diagnosed_1","angina_diagnosed_1","stroke_diagnosed_1","HT_diagnosed_1",
                "heartattack_diagnosed_2","angina_diagnosed_2","stroke_diagnosed_2","HT_diagnosed_2",
-               "dementia_outcome","parkinson_outcome","asthma_outcome","COPD_outcome","endstage_renal_disease_outcome","motor_neuron_disease_outcome","MI_outcome","stroke_outcome")
+               "dementia_outcome","parkinson_outcome","asthma_outcome","COPD_outcome","endstage_renal_disease_outcome","motor_neuron_disease_outcome","MI_outcome","stroke_outcome",
+               paste0("education_college_university_",0:3),
+               paste0("education_A_AS_",0:3),
+               paste0("education_O_GCSEs_",0:3),
+               paste0("education_CSEs_",0:3),
+               paste0("education_NVQ_HND_HNC_",0:3),
+               paste0("education_other_professional_",0:3),
+               paste0("education_school_never_",0:2))
 out[,(factor_vars):=lapply(.SD,as.factor),.SDcols=factor_vars]
 
 out.label <- jstable::mk.lev(out)
@@ -559,4 +629,3 @@ out.label <- jstable::mk.lev(out)
 
 
 #fst::write_fst(out, "data.fst");saveRDS(list(factor_vars = factor_vars, label= out.label), "info.RDS")
-
