@@ -81,14 +81,19 @@ ui <- navbarPage("UK biobank",
                             tabPanel("Cox model",
                                      sidebarLayout(
                                          sidebarPanel(
-                                             selectInput("dep_cox", "Outcome", choices = vars.surv, selected = vars.surv[1]),
+                                             radioButtons("dep_cox", "Outcome", choices = vars.surv, selected = vars.surv[1], inline = T),
                                              sliderInput("year_cox", "Cut year", min = 0 , max = 15, value = c(0, 15)),
                                              selectInput("cov_cox", "Covariates", choices = varlist[c(1, 4)], selected = "MetS_NCEPATPIII_0", multiple = T),
                                              actionBttn("action_cox", "Run cox")
                                          ),
                                          mainPanel(
                                              withLoader(DTOutput("coxtable"), type="html", loader="loader6"),
-                                             plotOutput("coxplot")
+                                             plotOutput("coxplot"),
+                                             h3("Download options"),
+                                             wellPanel(
+                                                 uiOutput("downloadControls"),
+                                                 downloadButton("downloadButton", label = "Download the plot")
+                                             )
                                          )
                                      )
                             )
@@ -485,10 +490,70 @@ server <- function(input, output, session) {
         
     })
     
-    output$coxplot <- renderPlot({
+    obj.coxplot <- reactive({
         survminer::ggforest(obj.coxtable()$cox, data = data())
     })
     
+    output$coxplot <- renderPlot({
+        obj.coxplot()
+    })
+    
+    output$downloadControls <- renderUI({
+        tagList(
+            column(4,
+                   selectizeInput(session$ns("file_ext"), "File extension (dpi = 300)",
+                                  choices = c("jpg","pdf", "tiff", "svg", "pptx"), multiple = F,
+                                  selected = "pptx"
+                   )
+            ),
+            column(4,
+                   sliderInput(session$ns("fig_width"), "Width (in):",
+                               min = 5, max = 15, value = 8
+                   )
+            ),
+            column(4,
+                   sliderInput(session$ns("fig_height"), "Height (in):",
+                               min = 5, max = 15, value = 6
+                   )
+            )
+        )
+    })
+    
+    output$downloadButton <- downloadHandler(
+        filename =  function() {
+            paste("_forestplot.",input$file_ext ,sep="")
+            
+        },
+        # content is a function with argument file. content writes the plot to the device
+        content = function(file) {
+            withProgress(message = 'Download in progress',
+                         detail = 'This may take a while...', value = 0, {
+                             for (i in 1:15) {
+                                 incProgress(1/15)
+                                 Sys.sleep(0.01)
+                             }
+                             
+                             if (input$file_ext == "pptx"){
+                                 my_vec_graph <- rvg::dml(ggobj  = obj.coxplot())
+                                 
+                                 doc <- officer::read_pptx()
+                                 doc <- officer::add_slide(doc, layout = "Title and Content", master = "Office Theme")
+                                 doc <- officer::ph_with(doc, my_vec_graph, location = officer::ph_location(width = input$fig_width, height = input$fig_height))
+                                 print(doc, target = file)
+                                 
+                             } else{
+                                 ggplot2::ggsave(file, obj.coxplot(), dpi = 300, units = "in", width = input$fig_width, height =input$fig_height)
+                             }
+                         })
+            
+        }
+    )
+    
+    
+    
+
+
+
     group.tbsub <- reactive({
         input$group_tbsub
     })
