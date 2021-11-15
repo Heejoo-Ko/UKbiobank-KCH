@@ -1,6 +1,6 @@
 library(shiny);library(shinycustomloader);library(ggpubr);library(survival);library(jsmodule);library(DT)
 #source("global.R")
-library(data.table);library(magrittr);library(jstable);library(forestplot)
+library(data.table);library(magrittr);library(jstable);library(forestplot);library(shinyWidgets)
 nfactor.limit <- 20  ## For module
 
 ## Load info
@@ -83,10 +83,12 @@ ui <- navbarPage("UK biobank",
                                          sidebarPanel(
                                              selectInput("dep_cox", "Outcome", choices = vars.surv, selected = vars.surv[1]),
                                              sliderInput("year_cox", "Cut year", min = 0 , max = 15, value = c(0, 15)),
-                                             selectInput("cov_cox", "Covariates", choices = varlist[c(1, 4)], selected = "MetS_NCEPATPIII_0", multiple = T)
+                                             selectInput("cov_cox", "Covariates", choices = varlist[c(1, 4)], selected = "MetS_NCEPATPIII_0", multiple = T),
+                                             actionBttn("action_cox", "Run cox")
                                          ),
                                          mainPanel(
-                                             withLoader(DTOutput("coxtable"), type="html", loader="loader6")
+                                             withLoader(DTOutput("coxtable"), type="html", loader="loader6"),
+                                             plotOutput("coxplot")
                                          )
                                      )
                             )
@@ -100,6 +102,7 @@ ui <- navbarPage("UK biobank",
                                   selectInput("group_tbsub", "Main variable", varlist[[1]][1:4], "MetS_NCEPATPIII_0"),
                                   selectInput("subgroup_tbsub", "Subgroup to analyze", intersect(varlist$Base, factor_vars), "sex", multiple = T),
                                   selectInput("cov_tbsub", "Additional covariates", varlist[c(4)], selected = NULL, multiple = T),
+                                  actionBttn("action_tbsub", "Run subgroup analysis"),
                                   downloadButton("forest", "Download forest plot")
                               ),
                               mainPanel(
@@ -433,10 +436,7 @@ server <- function(input, output, session) {
     })
     
     
- 
-    
-    
-    output$coxtable <- renderDT({
+    obj.coxtable <- eventReactive(input$action_cox,{
         validate(
             need(!is.null(input$cov_cox), "Please select at least 1 independent variable.")
         )
@@ -466,7 +466,14 @@ server <- function(input, output, session) {
         sig <- ifelse(as.numeric(as.vector(sig)) <= 0.05, "**", NA)
         out.cox <- cbind(out.cox, sig)
         cap.cox <- paste("Cox's proportional hazard model on time ('", label[variable == var.day, var_label][1] , "') to event ('", label[variable == var.event, var_label][1], "')", sep="")
-        
+        return(list(out = out.cox, caption = cap.cox, cox = res.cox))
+    })
+ 
+    
+    
+    output$coxtable <- renderDT({
+        out.cox <- obj.coxtable()$out
+        cap.cox <- obj.coxtable()$caption
         hide <- which(colnames(out.cox) == c("sig"))
         datatable(out.cox, rownames=T, extensions= "Buttons", caption = cap.cox,
                   options = c(opt.tbreg(cap.cox),
@@ -478,12 +485,16 @@ server <- function(input, output, session) {
         
     })
     
+    output$coxplot <- renderPlot({
+        survminer::ggforest(obj.coxtable()$cox, data = data())
+    })
+    
     group.tbsub <- reactive({
         input$group_tbsub
     })
     
     
-    tbsub <- reactive({
+    tbsub <-  eventReactive(input$action_tbsub,{
 
         data <- data()
         label <- data.label()
@@ -535,7 +546,7 @@ server <- function(input, output, session) {
         tbsub <- cbind(Variable = tbsub[, 1], cn[, -1], tbsub[, c(7, 8, 4, 5, 6, 9, 10)])
         
         tbsub[-1, 1] <- unlist(lapply(vs, function(x){c(label[variable == x, var_label][1], paste0("     ", label[variable == x, val_label]))}))
-        colnames(tbsub)[1:6] <- c("Subgroup", paste0("N(%): ", label[variable == group.tbsub(), val_label]), paste0(paste(input$year_tbsub, collapse = "~"), "-month KM rate(%): ", label[variable == group.tbsub(), val_label]), "HR")
+        colnames(tbsub)[1:6] <- c("Subgroup", paste0("N(%): ", label[variable == group.tbsub(), val_label]), paste0(paste(input$year_tbsub, collapse = "~"), "-year KM rate(%): ", label[variable == group.tbsub(), val_label]), "HR")
         #colnames(tbsub)[c(4)] <- c("HR")
         #tbsub[27:30, Subgroup := c("EES", "ZES", "BES", "Others")]
         
@@ -580,9 +591,9 @@ server <- function(input, output, session) {
                                                 c("P Value","\n",data$`P value`),
                                                 c("P for interaction","\n",data$`P for interaction`))
                              
-                             tabletext <- tabletext[, c(1, 4, 5)]
+                             tabletext <- tabletext[, c(1,2,3, 4, 5)]
                              ## Save as tiff 
-                             forestplot::forestplot(labeltext=tabletext, graph.pos=2, xticks = c(0.1, 0.5, 1, 2, 10), xlog= T, align = c("r", rep("c", ncol(tabletext) - 1)),                          ## graph.pos- column number
+                             forestplot::forestplot(labeltext=tabletext, graph.pos=4, xticks = c(0.5, 1, 2), xlog= T, align = c("r", rep("c", ncol(tabletext) - 1)),                          ## graph.pos- column number
                                                     mean=c(NA,NA,as.numeric(data$HR)), 
                                                     lower=c(NA,NA,as.numeric(data$Lower)), upper=c(NA,NA,as.numeric(data$Upper)),
                                                     title="Hazard Ratio",
@@ -595,8 +606,8 @@ server <- function(input, output, session) {
                                                                    xlab=gpar(cex = 1.2),
                                                                    title=gpar(cex = 1.2)),
                                                     col=fpColors(box="black", lines="black", zero = "gray50"),
-                                                    zero=1, cex=0.9, lineheight = "auto", boxsize=0.5, colgap=unit(6,"mm"),
-                                                    lwd.ci=2, ci.vertices=TRUE, ci.vertices.height = 0.4) 
+                                                    zero=1, cex=0.9, lineheight = "auto", boxsize=0.1, colgap=unit(6,"mm"),
+                                                    lwd.ci=2, ci.vertices=F, ci.vertices.height = 0.4) 
                              grDevices::dev.off()
                          })
             
