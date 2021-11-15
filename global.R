@@ -535,13 +535,14 @@ a$stroke_outcome_date<-bd$f.42006.0.0
 
 
 #Death
+a$death_outcome<-ifelse(is.na(bd$f.40000.0.0),0,1)
+a$death_outcome_date <- bd$f.40000.0.0
 
-a$death_date<-bd$f.40000.0.0
 
-days <- sapply(c("dementia", "parkinson", "asthma", "COPD", "endstage_renal_disease", "motor_neuron_disease", "MI", "stroke"),
+days <- sapply(c("death", "dementia", "parkinson", "asthma", "COPD", "endstage_renal_disease", "motor_neuron_disease", "MI", "stroke"),
                function(v){
                  as.integer(ifelse(!is.na(a[[paste0(v, "_outcome_date")]]),a[[paste0(v, "_outcome_date")]],
-                                   ifelse(!is.na(a[["death_date"]]),a[["death_date"]],as.IDate("2019-03-31")))) - as.integer(a[["visit_date_0"]])
+                                   ifelse(!is.na(a[["death_outcome_date"]]),a[["death_outcome_date"]],as.IDate("2019-03-31")))) - as.integer(a[["visit_date_0"]])
                }) 
 colnames(days) <- paste0(colnames(days), "_day")
 
@@ -550,8 +551,8 @@ colnames(days) <- paste0(colnames(days), "_day")
 
 varlist <- list(
   MetS = c("MetS_NCEPATPIII_0","MetS_NCEPATPIII_1","MetS_IDF_0","MetS_IDF_1", "MetS_NCEPATPIII_count_0", "MetS_NCEPATPIII_count_1", "MetS_IDF_count_0", "MetS_IDF_count_1"),
-  Event = paste0(c("dementia", "parkinson", "asthma", "COPD", "endstage_renal_disease", "motor_neuron_disease", "MI", "stroke"), "_outcome"),
-  Time = paste0(c("dementia", "parkinson", "asthma", "COPD", "endstage_renal_disease", "motor_neuron_disease", "MI", "stroke"), "_day"),
+  Event = paste0(c("death", "dementia", "parkinson", "asthma", "COPD", "endstage_renal_disease", "motor_neuron_disease", "MI", "stroke"), "_outcome"),
+  Time = paste0(c("death", "dementia", "parkinson", "asthma", "COPD", "endstage_renal_disease", "motor_neuron_disease", "MI", "stroke"), "_day"),
   Base = c("age", "sex", "townsend_deprivation_index", "smoking_status_0","smoking_status_1","smoking_status_2","smoking_status_3",
            "alcohol_status_0","alcohol_status_1","alcohol_status_2","alcohol_status_3",
            "alcohol_addiction", paste0("noncancer_illness_self_", 0:3),
@@ -591,6 +592,10 @@ varlist <- list(
 
 out <- cbind(a, days)[, .SD, .SDcols = unlist(varlist)]
 
+for (v in colnames(days)){
+  out[[v]] <- out[[v]]/365.25
+}
+
 factor_vars<-c("sex", "smoking_status_0","smoking_status_1","smoking_status_2","smoking_status_3",
                "alcohol_status_0","alcohol_status_1","alcohol_status_2","alcohol_status_3",
                "alcohol_addiction","DM_self_0","DM_self_1","DM_self_2","DM_self_3",
@@ -601,7 +606,8 @@ factor_vars<-c("sex", "smoking_status_0","smoking_status_1","smoking_status_2","
                "cholesterol_medication_2","BP_medication_2","insulin_medication_2",
                "cholesterol_medication_3","BP_medication_3","insulin_medication_3",
                "DM_0","DM_1","DM_2","DM_3",
-               "MetS_NCEPATPIII_0","MetS_NCEPATPIII_1","MetS_IDF_0","MetS_IDF_1",
+               "MetS_NCEPATPIII_0","MetS_NCEPATPIII_1","MetS_IDF_0","MetS_IDF_1", 
+               "MetS_NCEPATPIII_count_0", "MetS_NCEPATPIII_count_1", "MetS_IDF_count_0", "MetS_IDF_count_1",
                "angina_self_0","angina_self_1","angina_self_2","angina_self_3",
                "heartattack_or_MI_self_0","heartattack_or_MI_self_1","heartattack_or_MI_self_2","heartattack_or_MI_self_3",
                "ischaemicstroke_self_0","ischaemicstroke_self_1","ischaemicstroke_self_2","ischaemicstroke_self_3",
@@ -612,7 +618,7 @@ factor_vars<-c("sex", "smoking_status_0","smoking_status_1","smoking_status_2","
                "heartattack_diagnosed_0","angina_diagnosed_0","stroke_diagnosed_0","HT_diagnosed_0",
                "heartattack_diagnosed_1","angina_diagnosed_1","stroke_diagnosed_1","HT_diagnosed_1",
                "heartattack_diagnosed_2","angina_diagnosed_2","stroke_diagnosed_2","HT_diagnosed_2",
-               "dementia_outcome","parkinson_outcome","asthma_outcome","COPD_outcome","endstage_renal_disease_outcome","motor_neuron_disease_outcome","MI_outcome","stroke_outcome",
+              "death_outcome",  "dementia_outcome","parkinson_outcome","asthma_outcome","COPD_outcome","endstage_renal_disease_outcome","motor_neuron_disease_outcome","MI_outcome","stroke_outcome",
                paste0("education_college_university_",0:3),
                paste0("education_A_AS_",0:3),
                paste0("education_O_GCSEs_",0:3),

@@ -1,6 +1,6 @@
 library(shiny);library(shinycustomloader);library(ggpubr);library(survival);library(jsmodule);library(DT)
 #source("global.R")
-library(data.table);library(magrittr);library(jstable)
+library(data.table);library(magrittr);library(jstable);library(forestplot)
 nfactor.limit <- 20  ## For module
 
 ## Load info
@@ -15,7 +15,7 @@ out[, (factor_vars) := lapply(.SD, factor), .SDcols = factor_vars]
 
 out.label <- info$label
 
-vars.surv <- sapply(strsplit(varlist$Event, "_"), `[[`, 1)
+vars.surv <- gsub("_outcome", "", varlist$Event)
 
 ui <- navbarPage("UK biobank",
                  tabPanel("Data", icon = icon("table"),
@@ -81,8 +81,9 @@ ui <- navbarPage("UK biobank",
                             tabPanel("Cox model",
                                      sidebarLayout(
                                          sidebarPanel(
-                                             checkboxGroupInput("negday_cox", "Exclude day <= 0", vars.surv, vars.surv[1], inline = T),
-                                             coxUI("cox")
+                                             selectInput("dep_cox", "Outcome", choices = vars.surv, selected = vars.surv[1]),
+                                             sliderInput("year_cox", "Cut year", min = 0 , max = 15, value = c(0, 15)),
+                                             selectInput("cov_cox", "Covariates", choices = varlist[c(1, 4)], selected = "MetS_NCEPATPIII_0", multiple = T)
                                          ),
                                          mainPanel(
                                              withLoader(DTOutput("coxtable"), type="html", loader="loader6")
@@ -90,6 +91,22 @@ ui <- navbarPage("UK biobank",
                                      )
                             )
                             
+                 ),
+                 tabPanel("Subgroup analysis",
+                          sidebarLayout(
+                              sidebarPanel(
+                                  radioButtons("dep_tbsub", "Outcome", choices = vars.surv, selected = vars.surv[1], inline = T),
+                                  sliderInput("year_tbsub", "Cut year", min = 0 , max = 15, value = c(0, 15)),
+                                  selectInput("group_tbsub", "Main variable", varlist[[1]][1:4], "MetS_NCEPATPIII_0"),
+                                  selectInput("subgroup_tbsub", "Subgroup to analyze", intersect(varlist$Base, factor_vars), "sex", multiple = T),
+                                  selectInput("cov_tbsub", "Additional covariates", varlist[c(4)], selected = NULL, multiple = T),
+                                  downloadButton("forest", "Download forest plot")
+                              ),
+                              mainPanel(
+                                  withLoader(DTOutput("tablesub"), type="html", loader="loader6")
+                              )
+                          )
+                          
                  ),
                  navbarMenu("Plot", icon = icon("bar-chart-o"),
                             tabPanel("Basic plot",
@@ -416,30 +433,175 @@ server <- function(input, output, session) {
     })
     
     
-    data.cox <- reactive({
-        if (!is.null(input$negday_cox)){
-            dd <- data()
-            for (v in input$negday_cox){
-                dd <- dd[get(paste0(v, "_day")) > 0]
-            }
-            return(dd)
-        } else{
-            return(data())
-        }
-    })
+ 
     
-    out_cox <- callModule(coxModule, "cox", data = data.cox, data_label = data.label, data_varStruct = reactive(varlist[names(varlist)[c(2, 3, 1, 4)]]), default.unires = F, nfactor.limit = nfactor.limit)
     
     output$coxtable <- renderDT({
-        hide = which(colnames(out_cox()$table) == c("sig"))
-        datatable(out_cox()$table, rownames=T, extensions= "Buttons", caption = out_cox()$caption,
-                  options = c(opt.tbreg(out_cox()$caption),
+        validate(
+            need(!is.null(input$cov_cox), "Please select at least 1 independent variable.")
+        )
+        data <- data()
+        label <- data.label()
+        
+        
+        var.event <- paste0(input$dep_cox, "_outcome")
+        var.day <- paste0(input$dep_cox, "_day")
+        
+        data <- data[!( get(var.day) < input$year_cox[1]) & get(var.day) > 0]
+        
+        data[[var.event]] <- ifelse(data[[var.day]] >= input$year_cox[2] & data[[var.event]] == "1", 0,  as.numeric(as.vector(data[[var.event]])))
+        data[[var.day]] <- ifelse(data[[var.day]] >= input$year_cox[2], input$year_cox[2], data[[var.day]])
+        
+        data[[var.event]] <- as.numeric(as.vector(data[[var.event]]))
+        
+        forms.cox <- as.formula(paste("Surv(", var.day,",", var.event,") ~ ", paste(input$cov_cox, collapse="+"), sep=""))
+        
+        cc <- substitute(survival::coxph(.form, data= data, model = T), list(.form= forms.cox))
+        res.cox <- eval(cc)
+        tb.cox <- jstable::cox2.display(res.cox, dec = 2)
+        tb.cox <- jstable::LabeljsCox(tb.cox, ref = label)
+        out.cox <- rbind(tb.cox$table, tb.cox$metric)
+        sig <- out.cox[, ncol(out.cox)]
+        sig <- gsub("< ", "", sig)
+        sig <- ifelse(as.numeric(as.vector(sig)) <= 0.05, "**", NA)
+        out.cox <- cbind(out.cox, sig)
+        cap.cox <- paste("Cox's proportional hazard model on time ('", label[variable == var.day, var_label][1] , "') to event ('", label[variable == var.event, var_label][1], "')", sep="")
+        
+        hide <- which(colnames(out.cox) == c("sig"))
+        datatable(out.cox, rownames=T, extensions= "Buttons", caption = cap.cox,
+                  options = c(opt.tbreg(cap.cox),
                               list(columnDefs = list(list(visible=FALSE, targets= hide))
                               )
                   )
         )  %>% formatStyle("sig", target = 'row',backgroundColor = styleEqual("**", 'yellow'))
+        
+        
     })
     
+    group.tbsub <- reactive({
+        input$group_tbsub
+    })
+    
+    
+    tbsub <- reactive({
+
+        data <- data()
+        label <- data.label()
+        
+        
+        var.event <- paste0(input$dep_tbsub, "_outcome")
+        var.day <- paste0(input$dep_tbsub, "_day")
+        
+        data <- data[!( get(var.day) <= input$year_tbsub[1]) & !(is.na(get(group.tbsub())))]
+        
+        data[[var.event]] <- ifelse(data[[var.day]] >= input$year_tbsub[2] & data[[var.event]] == "1", 0,  as.numeric(as.vector(data[[var.event]])))
+        data[[var.day]] <- ifelse(data[[var.day]] >= input$year_tbsub[2], input$year_tbsub[2], data[[var.day]])
+        
+        data[[var.event]] <- as.numeric(as.vector(data[[var.event]]))
+        
+        
+        form <- as.formula(paste("Surv(", var.day, ",", var.event, ") ~ ", group.tbsub(), sep = ""))
+        vs <- input$subgroup_tbsub
+
+        tbsub <-  TableSubgroupMultiCox(form, var_subgroups = vs, var_cov = setdiff(input$cov_tbsub, vs),
+                                        data=data, time_eventrate = as.numeric(input$year_tbsub[2]), line = F)
+        #data[[var.event]] <- ifelse(data[[var.day]] > 365 * 5 & data[[var.event]] == 1, 0,  as.numeric(as.vector(data[[var.event]])))
+        
+        lapply(vs, 
+               function(x){
+                   cc <- data.table(t(c(x, NA, NA)))
+                   
+                   dd <- lapply(levels(data[[group.tbsub()]]),
+                                function(y){
+                                    ev <- data[get(group.tbsub()) == y, sum(as.numeric(as.vector(get(var.event)))), keyby = get(x)]
+                                    nn <- data[get(group.tbsub()) == y, .N, keyby = get(x)]
+                                    vv <- paste0(ev[, V1], "/", nn[, N], " (", round(ev[, V1]/ nn[, N] * 100, 1), ")")
+                                    data.table(ev[, 1], vv)
+                                })
+                   dd.bind <- cbind(dd[[1]], dd[[2]][, -1])
+                   names(cc) <- names(dd.bind)
+                   rbind(cc, dd.bind)
+               }) %>% rbindlist -> ll
+        
+        
+        ev.ov <- data[, sum(as.numeric(as.vector(get(var.event)))), keyby = get(group.tbsub())][, V1]
+        nn.ov <- data[, .N, keyby = get(group.tbsub())][, N]
+        
+        ov <- data.table(t(c("OverAll", paste0(ev.ov, "/", nn.ov, " (", round(ev.ov/nn.ov * 100, 1), ")"))))
+        names(ov) <- names(ll)
+        cn <- rbind(ov, ll)
+        
+        names(cn)[-1] <- label[variable == group.tbsub(), val_label]
+        tbsub <- cbind(Variable = tbsub[, 1], cn[, -1], tbsub[, c(7, 8, 4, 5, 6, 9, 10)])
+        
+        tbsub[-1, 1] <- unlist(lapply(vs, function(x){c(label[variable == x, var_label][1], paste0("     ", label[variable == x, val_label]))}))
+        colnames(tbsub)[1:6] <- c("Subgroup", paste0("N(%): ", label[variable == group.tbsub(), val_label]), paste0(paste(input$year_tbsub, collapse = "~"), "-month KM rate(%): ", label[variable == group.tbsub(), val_label]), "HR")
+        #colnames(tbsub)[c(4)] <- c("HR")
+        #tbsub[27:30, Subgroup := c("EES", "ZES", "BES", "Others")]
+        
+        return(tbsub)
+    })
+    
+    output$tablesub <- renderDT({
+        
+        datatable(tbsub()[, .SD, .SDcols = -c(4, 5)], caption = paste0(input$dep_tbsub, " subgroup analysis"), rownames = F, extensions= "Buttons",
+                  options = c(opt.tb1(paste0("tbsub_original")),
+                              list(scrollX = TRUE, columnDefs = list(list(className = 'dt-right', targets = 0)))
+                  )) 
+        
+    })
+    
+    
+    
+    
+    
+    output$forest <- downloadHandler(
+        filename =  function() {
+            paste(input$dep_tbsub,"_forestplot.emf", sep="")
+            
+        },
+        # content is a function with argument file. content writes the plot to the device
+        content = function(file) {
+            withProgress(message = 'Download in progress',
+                         detail = 'This may take a while...', value = 0, {
+                             for (i in 1:15) {
+                                 incProgress(1/15)
+                                 Sys.sleep(0.01)
+                             }
+                             
+                             
+                             devEMF::emf(file, width = 15, height = 20, coordDPI = 300, emfPlus = T)
+                             data <- tbsub()
+                             
+                             
+                             tabletext <- cbind(c("Subgroup","\n",data$Subgroup),
+                                                c("N(%)\n0", "\n" , data[[2]]),
+                                                c("N(%)\n1", "\n", data[[3]]),
+                                                c("P Value","\n",data$`P value`),
+                                                c("P for interaction","\n",data$`P for interaction`))
+                             
+                             tabletext <- tabletext[, c(1, 4, 5)]
+                             ## Save as tiff 
+                             forestplot::forestplot(labeltext=tabletext, graph.pos=2, xticks = c(0.1, 0.5, 1, 2, 10), xlog= T, align = c("r", rep("c", ncol(tabletext) - 1)),                          ## graph.pos- column number
+                                                    mean=c(NA,NA,as.numeric(data$HR)), 
+                                                    lower=c(NA,NA,as.numeric(data$Lower)), upper=c(NA,NA,as.numeric(data$Upper)),
+                                                    title="Hazard Ratio",
+                                                    xlab="<---MetS non-risky ---    ---MetS risky --->",    ## You cas modify this.
+                                                    hrzl_lines=list("3" = gpar(lwd=1, col="#99999922")
+                                                    ),
+                                                    
+                                                    txt_gp=fpTxtGp(label=gpar(cex=1.25),
+                                                                   ticks=gpar(cex=1.1),
+                                                                   xlab=gpar(cex = 1.2),
+                                                                   title=gpar(cex = 1.2)),
+                                                    col=fpColors(box="black", lines="black", zero = "gray50"),
+                                                    zero=1, cex=0.9, lineheight = "auto", boxsize=0.5, colgap=unit(6,"mm"),
+                                                    lwd.ci=2, ci.vertices=TRUE, ci.vertices.height = 0.4) 
+                             grDevices::dev.off()
+                         })
+            
+        }
+    )
     
     out_ggpairs <- callModule(ggpairsModule2, "ggpairs", data = data, data_label = data.label, data_varStruct = reactive(varlist[names(varlist)[c(2, 3, 1, 4)]]), nfactor.limit = nfactor.limit)
     
