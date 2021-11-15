@@ -7,7 +7,7 @@ nfactor.limit <- 20  ## For module
 info <- readRDS("info.RDS")
 
 ## Load fst data: Except MRI
-varlist <- info$varlist[names(info$varlist)[1:4]]
+varlist <- info$varlist[1:4]
 out <- fst::read_fst("data.fst", as.data.table = T, columns = unlist(varlist)) 
 
 factor_vars <- info$factor_vars
