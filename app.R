@@ -107,11 +107,23 @@ ui <- navbarPage("UK biobank",
                                   selectInput("group_tbsub", "Main variable", varlist[[1]][1:4], "MetS_NCEPATPIII_0"),
                                   selectInput("subgroup_tbsub", "Subgroup to analyze", intersect(varlist$Base, factor_vars), "sex", multiple = T),
                                   selectInput("cov_tbsub", "Additional covariates", varlist[c(4)], selected = NULL, multiple = T),
-                                  actionBttn("action_tbsub", "Run subgroup analysis"),
-                                  downloadButton("forest", "Download forest plot")
+                                  actionBttn("action_tbsub", "Run subgroup analysis")
                               ),
                               mainPanel(
-                                  withLoader(DTOutput("tablesub"), type="html", loader="loader6")
+                                  withLoader(DTOutput("tablesub"), type="html", loader="loader6"),
+                                  h3("Download options"),
+                                  wellPanel(
+                                      tagList(
+                                          column(6,
+                                                 sliderInput("fig_width_forest", "Width (in):", min = 5, max = 15, value = 12)
+                                          ),
+                                          column(6,
+                                                 sliderInput("fig_height_forest", "Width (in):", min = 3, max = 20, value = 5)
+                                          )
+                                      ),
+                                      downloadButton("forest", "Download forest plot")
+                                      
+                                  )
                               )
                           )
                           
@@ -633,7 +645,7 @@ server <- function(input, output, session) {
     
     output$forest <- downloadHandler(
         filename =  function() {
-            paste(input$dep_tbsub,"_forestplot.emf", sep="")
+            paste(input$dep_tbsub,"_forestplot.pptx", sep="")
             
         },
         # content is a function with argument file. content writes the plot to the device
@@ -644,11 +656,10 @@ server <- function(input, output, session) {
                                  incProgress(1/15)
                                  Sys.sleep(0.01)
                              }
+
                              
-                             
-                             devEMF::emf(file, width = 15, height = 5, coordDPI = 300, emfPlus = T)
+                             #devEMF::emf(file, width = 15, height = 5, coordDPI = 300, emfPlus = T)
                              data <- tbsub()
-                             
                              
                              tabletext <- cbind(c("Subgroup","\n",data$Subgroup),
                                                 c("N(%)\n0", "\n" , data[[2]]),
@@ -673,8 +684,13 @@ server <- function(input, output, session) {
                                                     col=fpColors(box="black", lines="black", zero = "gray50"),
                                                     zero=1, cex=0.9, lineheight = "auto", boxsize=0.4, colgap=unit(6,"mm"),
                                                     lwd.ci=2, ci.vertices=F, ci.vertices.height = 0.4) -> zz
-                             print(zz)
-                             grDevices::dev.off()
+                             #print(zz)
+                             my_vec_graph <- rvg::dml(code = print(zz))
+                             
+                             doc <- officer::read_pptx()
+                             doc <- officer::add_slide(doc, layout = "Title and Content", master = "Office Theme")
+                             doc <- officer::ph_with(doc, my_vec_graph, location = officer::ph_location(width = input$fig_width_forest, height = input$fig_height_forest))
+                             print(doc, target = file)
                          })
             
         }
