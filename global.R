@@ -21,15 +21,49 @@ a$visit_date_1<-bd$f.53.1.0
 a$visit_date_2<-bd$f.53.2.0
 a$visit_date_3<-bd$f.53.3.0
 
-#Summed MET minutes per week for all activity 22040 없다.
-# a$MET_activity<-bd$f.22040.0.0 
+#BMI [kg/m2]
+a$bmi_0<-bd$f.21001.0.0
+a$bmi_1<-bd$f.21001.1.0
+a$bmi_2<-bd$f.21001.2.0
+a$bmi_3<-bd$f.21001.3.0
+
+#ethnicity
+# 1	White	1	Top
+# 1001	British	1001	1
+# 2001	White and Black Caribbean	2001	2
+# 3001	Indian	3001	3
+# 4001	Caribbean	4001	4
+# 2	Mixed	2	Top
+# 1002	Irish	1002	1
+# 2002	White and Black African	2002	2
+# 3002	Pakistani	3002	3
+# 4002	African	4002	4
+# 3	Asian or Asian British	3	Top
+# 1003	Any other white background	1003	1
+# 2003	White and Asian	2003	2
+# 3003	Bangladeshi	3003	3
+# 4003	Any other Black background	4003	4
+# 4	Black or Black British	4	Top
+# 2004	Any other mixed background	2004	2
+# 3004	Any other Asian background	3004	3
+# 5	Chinese	5	Top
+# 6	Other ethnic group	6	Top
+# -1->9999	Do not know	-1	Top
+# -3->9997	Prefer not to answer	-3	Top
+
+a$ethnicity<-bd$f.21000.0.0 %% 10000
+a$ethnicity_group<-a$ethnicity %% 1000
+
+#Summed MET minutes per week for all activity 22040 없어서 walking, moderate, vigorous 더해서 구함
+#[minutes/week]
+a$MET_activity<-bd$f.22037.0.0+bd$f.22038.0.0+bd$f.22039.0.0
 
 #Smoking
-# -3	Prefer not to answer / 0	Never / 1	Previous / 2	Current
-a$smoking_status_0<-bd$f.20116.0.0
-a$smoking_status_1<-bd$f.20116.1.0
-a$smoking_status_2<-bd$f.20116.2.0
-a$smoking_status_3<-bd$f.20116.3.0
+# -3->9	Prefer not to answer / 0	Never / 1	Previous / 2	Current
+a$smoking_status_0<-ifelse(bd$f.20116.0.0==-3,9,bd$f.20116.0.0)
+a$smoking_status_1<-ifelse(bd$f.20116.1.0==-3,9,bd$f.20116.1.0)
+a$smoking_status_2<-ifelse(bd$f.20116.2.0==-3,9,bd$f.20116.2.0)
+a$smoking_status_3<-ifelse(bd$f.20116.3.0==-3,9,bd$f.20116.3.0)
 
 a$smoking_stop_age<-bd$f.22507.0.0
 
@@ -39,20 +73,21 @@ a$smoking_packyears_2<-bd$f.20161.2.0
 a$smoking_packyears_3<-bd$f.20161.3.0
 
 #Alcohol
-# -3	Prefer not to answer / 0	Never / 1	Previous / 2	Current
-a$alcohol_status_0<-bd$f.20117.0.0
-a$alcohol_status_1<-bd$f.20117.1.0
-a$alcohol_status_2<-bd$f.20117.2.0
-a$alcohol_status_3<-bd$f.20117.3.0
+# -3->9	Prefer not to answer / 0	Never / 1	Previous / 2	Current
+a$alcohol_status_0<-ifelse(bd$f.20117.0.0==-3,9,bd$f.20117.0.0)
+a$alcohol_status_1<-ifelse(bd$f.20117.1.0==-3,9,bd$f.20117.1.0)
+a$alcohol_status_2<-ifelse(bd$f.20117.2.0==-3,9,bd$f.20117.2.0)
+a$alcohol_status_3<-ifelse(bd$f.20117.3.0==-3,9,bd$f.20117.3.0)
 
-# 1	Daily or almost daily / 2	Three or four times a week / 3	Once or twice a week / 4	One to three times a month / 5	Special occasions only / 6	Never / -3	Prefer not to answer
-a$alcohol_frequency_0<-bd$f.1558.0.0
-a$alcohol_frequency_1<-bd$f.1558.1.0
-a$alcohol_frequency_2<-bd$f.1558.2.0
-a$alcohol_frequency_3<-bd$f.1558.3.0
+# 1	Daily or almost daily / 2	Three or four times a week / 3	Once or twice a week / 4	One to three times a month / 5	Special occasions only / 6	Never / -3->9	Prefer not to answer
+a$alcohol_frequency_0<-ifelse(bd$f.1558.0.0==-3,9,bd$f.1558.0.0)
+a$alcohol_frequency_1<-ifelse(bd$f.1558.1.0==-3,9,bd$f.1558.1.0)
+a$alcohol_frequency_2<-ifelse(bd$f.1558.2.0==-3,9,bd$f.1558.2.0)
+a$alcohol_frequency_3<-ifelse(bd$f.1558.3.0==-3,9,bd$f.1558.3.0)
 
-# -818	Prefer not to answer / -121	Do not know / 0	No / 1	Yes : ever addicted to alcohol
-a$alcohol_addiction<-bd$f.20406.0.0
+# -818->8	Prefer not to answer / -121->9	Do not know / 0	No / 1	Yes : ever addicted to alcohol
+a$alcohol_addiction<-ifelse(bd$f.20406.0.0==-818,8,
+                            ifelse(bd$f.20406.0.0==-121,9,bd$f.20406.0.0))
 
 #Exposures------------------------------------------------------------------
 #DM
@@ -133,10 +168,10 @@ a$sysBP_automated_3<-bd[,..myCol][,rowMeans(.SD,na.rm=T),]
 myCol<-colnames(bd)[grep("f.93.3.",colnames(bd))]
 a$sysBP_manual_3<-bd[,..myCol][,rowMeans(.SD,na.rm=T),]
 
-a$sysBP_0<-ifelse(is.na(a$sysBP_automated_0),a$sysBP_manual_0,a$sysBP_automated_0)
-a$sysBP_1<-ifelse(is.na(a$sysBP_automated_1),a$sysBP_manual_1,a$sysBP_automated_1)
-a$sysBP_2<-ifelse(is.na(a$sysBP_automated_2),a$sysBP_manual_2,a$sysBP_automated_2)
-a$sysBP_3<-ifelse(is.na(a$sysBP_automated_3),a$sysBP_manual_3,a$sysBP_automated_3)
+a$sysBP_0<-ifelse(is.na(a$sysBP_manual_0),a$sysBP_automated_0,a$sysBP_manual_0)
+a$sysBP_1<-ifelse(is.na(a$sysBP_manual_1),a$sysBP_automated_1,a$sysBP_manual_1)
+a$sysBP_2<-ifelse(is.na(a$sysBP_manual_2),a$sysBP_automated_2,a$sysBP_manual_2)
+a$sysBP_3<-ifelse(is.na(a$sysBP_manual_3),a$sysBP_automated_3,a$sysBP_manual_3)
 
 myCol<-colnames(bd)[grep("f.4079.0.",colnames(bd))]
 a$diaBP_automated_0<-bd[,..myCol][,rowMeans(.SD,na.rm=T),]
@@ -158,10 +193,10 @@ a$diaBP_automated_3<-bd[,..myCol][,rowMeans(.SD,na.rm=T),]
 myCol<-colnames(bd)[grep("f.94.3.",colnames(bd))]
 a$diaBP_manual_3<-bd[,..myCol][,rowMeans(.SD,na.rm=T),]
 
-a$diaBP_0<-ifelse(is.na(a$diaBP_automated_0),a$diaBP_manual_0,a$diaBP_automated_0)
-a$diaBP_1<-ifelse(is.na(a$diaBP_automated_1),a$diaBP_manual_1,a$diaBP_automated_1)
-a$diaBP_2<-ifelse(is.na(a$diaBP_automated_2),a$diaBP_manual_2,a$diaBP_automated_2)
-a$diaBP_3<-ifelse(is.na(a$diaBP_automated_3),a$diaBP_manual_3,a$diaBP_automated_3)
+a$diaBP_0<-ifelse(is.na(a$diaBP_manual_0),a$diaBP_automated_0,a$diaBP_manual_0)
+a$diaBP_1<-ifelse(is.na(a$diaBP_manual_1),a$diaBP_automated_1,a$diaBP_manual_1)
+a$diaBP_2<-ifelse(is.na(a$diaBP_manual_2),a$diaBP_automated_2,a$diaBP_manual_2)
+a$diaBP_3<-ifelse(is.na(a$diaBP_manual_3),a$diaBP_automated_3,a$diaBP_manual_3)
 
 #Abdominal obesity
 #[cm]
@@ -209,7 +244,6 @@ a$DM_0<-ifelse(a$DM_diagnosed_0==1 | a$insulin_medication_0==1,1,0)
 a$DM_1<-ifelse(a$DM_diagnosed_1==1 | a$insulin_medication_1==1,1,0)
 a$DM_2<-ifelse(a$DM_diagnosed_2==1 | a$insulin_medication_2==1,1,0)
 a$DM_3<-ifelse(a$DM_diagnosed_3==1 | a$insulin_medication_3==1,1,0)
-
 
 a$MetS_NCEPATPIII_count_0<-as.integer(a$DM_0)+
   as.integer(a$sysBP_0>=130 | a$diaBP_0>=85 | a$BP_medication_0==1)+
@@ -506,56 +540,103 @@ for(i in 1:4){
   }
 }
 
+
 #Outcomes------------------------------------------------------------------
 #Health related outcomes - Algorithmically defined outcomes
 
-a$dementia_outcome<-ifelse(is.na(bd$f.42018.0.0),0,1) #all cause dementia
-a$dementia_outcome_date<-bd$f.42018.0.0
+#dementia
+a$dementia_all_outcome<-ifelse(is.na(bd$f.42018.0.0),0,1) #all cause dementia
+a$dementia_all_outcome_date<-bd$f.42018.0.0
 
-a$parkinson_outcome<-ifelse(is.na(bd$f.42032.0.0),0,1)
-a$parkinson_outcome_date<-bd$f.42032.0.0
+a$dementia_alzheimer_outcome<-ifelse(is.na(bd$f.42020.0.0),0,1)
+a$dementia_alzheimer_outcome_date<-bd$f.42020.0.0
 
+a$dementia_vascular_outcome<-ifelse(is.na(bd$f.42022.0.0),0,1)
+a$dementia_vascular_outcome_date<-bd$f.42022.0.0
+
+a$dementia_frontotemporal_outcome<-ifelse(is.na(bd$f.42024.0.0),0,1)
+a$dementia_frontotemporal_outcome_date<-bd$f.42024.0.0
+
+#parkinson
+a$parkinson_PD_outcome<-ifelse(is.na(bd$f.42032.0.0),0,1)
+a$parkinson_PD_outcome_date<-bd$f.42032.0.0
+
+a$parkinson_parkinsonism_outcome<-ifelse(is.na(bd$f.42030.0.0),0,1)
+a$parkinson_parkinsonism_outcome_date<-bd$f.42030.0.0
+
+a$parkinson_progressive_supranuclear_palsy_outcome<-ifelse(is.na(bd$f.42034.0.0),0,1)
+a$parkinson_progressive_supranuclear_palsy_outcome_date<-bd$f.42034.0.0
+
+a$parkinson_multiple_system_atrophy_outcome<-ifelse(is.na(bd$f.42036.0.0),0,1)
+a$parkinson_multiple_system_atrophy_outcome_date<-bd$f.42036.0.0
+
+#asthma
 a$asthma_outcome<-ifelse(is.na(bd$f.42014.0.0),0,1)
 a$asthma_outcome_date<-bd$f.42014.0.0
 
+#COPD
 a$COPD_outcome<-ifelse(is.na(bd$f.42016.0.0),0,1)
 a$COPD_outcome_date<-bd$f.42016.0.0
 
+#endstage renal
 a$endstage_renal_disease_outcome<-ifelse(is.na(bd$f.42026.0.0),0,1)
 a$endstage_renal_disease_outcome_date<-bd$f.42026.0.0
 
+#motor neuron
 a$motor_neuron_disease_outcome<-ifelse(is.na(bd$f.42028.0.0),0,1)
 a$motor_neuron_disease_outcome_date<-bd$f.42028.0.0  
 
-a$MI_outcome<-ifelse(is.na(bd$f.42000.0.0),0,1)
-a$MI_outcome_date<-bd$f.42000.0.0
+#MI
+a$MI_all_outcome<-ifelse(is.na(bd$f.42000.0.0),0,1)
+a$MI_all_outcome_date<-bd$f.42000.0.0
 
-a$stroke_outcome<-ifelse(is.na(bd$f.42006.0.0),0,1)
-a$stroke_outcome_date<-bd$f.42006.0.0
+a$MI_STEMI_outcome<-ifelse(is.na(bd$f.42002.0.0),0,1)
+a$MI_STEMI_outcome_date<-bd$f.42002.0.0
 
+a$MI_NSTEMI_outcome<-ifelse(is.na(bd$f.42004.0.0),0,1)
+a$MI_NSTEMI_outcome_date<-bd$f.42004.0.0
+
+#stroke
+a$stroke_all_outcome<-ifelse(is.na(bd$f.42006.0.0),0,1)
+a$stroke_all_outcome_date<-bd$f.42006.0.0
+
+a$stroke_ischaemic_outcome<-ifelse(is.na(bd$f.42008.0.0),0,1)
+a$stroke_ischaemic_outcome_date<-bd$f.42008.0.0
+
+a$stroke_intracerebral_haemorrhage_outcome<-ifelse(is.na(bd$f.42010.0.0),0,1)
+a$stroke_intracerebral_haemorrhage_outcome_date<-bd$f.42010.0.0
+
+a$stroke_subarachnoid_haemorrhage_outcome<-ifelse(is.na(bd$f.42013.0.0),0,1)
+a$stroke_subarachnoid_haemorrhage_outcome_date<-bd$f.42013.0.0
 
 #Death
-a$death_outcome<-ifelse(is.na(bd$f.40000.0.0),0,1)
-a$death_outcome_date <- bd$f.40000.0.0
 
+a$death_date<-bd$f.40000.0.0
+a$death<-ifelse(!is.na(a$death_date),1,0)
 
-days <- sapply(c("death", "dementia", "parkinson", "asthma", "COPD", "endstage_renal_disease", "motor_neuron_disease", "MI", "stroke"),
+#date->day conversion
+events<-names(a) %>% .[grepl(pattern='_outcome|death',x=.)] %>% .[!grepl("_date",.)]
+
+days <- sapply(events,
                function(v){
-                 as.integer(ifelse(!is.na(a[[paste0(v, "_outcome_date")]]),a[[paste0(v, "_outcome_date")]],
-                                   ifelse(!is.na(a[["death_outcome_date"]]),a[["death_outcome_date"]],as.IDate("2019-03-31")))) - as.integer(a[["visit_date_0"]])
+                 as.integer(ifelse(!is.na(a[[paste0(v, "_date")]]),a[[paste0(v, "_date")]],
+                                   ifelse(!is.na(a[["death_date"]]),a[["death_date"]],as.IDate("2019-03-31")))) - as.integer(a[["visit_date_0"]])
                }) 
-colnames(days) <- paste0(colnames(days), "_day")
+colnames(days) <- gsub("_outcome", "_day", events)
+colnames(days)[colnames(days) == "death"] <- "death_day"
 
 
 #----------------------------------------------------------------------------------
 
 varlist <- list(
   MetS = c("MetS_NCEPATPIII_0","MetS_NCEPATPIII_1","MetS_IDF_0","MetS_IDF_1", "MetS_NCEPATPIII_count_0", "MetS_NCEPATPIII_count_1", "MetS_IDF_count_0", "MetS_IDF_count_1"),
-  Event = paste0(c("death", "dementia", "parkinson", "asthma", "COPD", "endstage_renal_disease", "motor_neuron_disease", "MI", "stroke"), "_outcome"),
-  Time = paste0(c("death", "dementia", "parkinson", "asthma", "COPD", "endstage_renal_disease", "motor_neuron_disease", "MI", "stroke"), "_day"),
-  Base = c("age", "sex", "townsend_deprivation_index", "smoking_status_0","smoking_status_1","smoking_status_2","smoking_status_3",
+  Event = c(gsub("_day","_outcome",colnames(days)[1:ncol(days)-1]),"death"),
+  Time = colnames(days),
+  Base = c("age", "sex", "townsend_deprivation_index", paste0("bmi_",0:3),
+           "smoking_status_0","smoking_status_1","smoking_status_2","smoking_status_3",
+           "smoking_stop_age",paste0("smoking_packyears_",0:3),
            "alcohol_status_0","alcohol_status_1","alcohol_status_2","alcohol_status_3",
-           "alcohol_addiction", paste0("noncancer_illness_self_", 0:3),
+           "alcohol_addiction",paste0("alcohol_frequency_",0:3),paste0("noncancer_illness_self_", 0:3),
            "DM_self_0","DM_self_1","DM_self_2","DM_self_3",
            "DM_diagnosed_0","DM_diagnosed_1","DM_diagnosed_2","DM_diagnosed_3",
            "gestational_DM_0","gestational_DM_1","gestational_DM_2","gestational_DM_3",
@@ -586,19 +667,17 @@ varlist <- list(
            paste0("education_NVQ_HND_HNC_",0:3),
            paste0("education_other_professional_",0:3),
            paste0("education_school_never_",0:2),
-           paste0("education_age_completed_full_time_education_",0:2)),
+           paste0("education_age_completed_full_time_education_",0:2),
+           "ethnicity_group","MET_activity"
+  ),
   MRI = grep(pattern='dMRI_|T1_', x=names(a), value = T)
 )
 
 out <- cbind(a, days)[, .SD, .SDcols = unlist(varlist)]
 
-for (v in colnames(days)){
-  out[[v]] <- out[[v]]/365.25
-}
-
 factor_vars<-c("sex", "smoking_status_0","smoking_status_1","smoking_status_2","smoking_status_3",
                "alcohol_status_0","alcohol_status_1","alcohol_status_2","alcohol_status_3",
-               "alcohol_addiction","DM_self_0","DM_self_1","DM_self_2","DM_self_3",
+               "alcohol_addiction",paste0("alcohol_frequency_",0:3),"DM_self_0","DM_self_1","DM_self_2","DM_self_3",
                "DM_diagnosed_0","DM_diagnosed_1","DM_diagnosed_2","DM_diagnosed_3",
                "gestational_DM_0","gestational_DM_1","gestational_DM_2","gestational_DM_3",
                "cholesterol_medication_0","BP_medication_0","insulin_medication_0",
@@ -606,8 +685,7 @@ factor_vars<-c("sex", "smoking_status_0","smoking_status_1","smoking_status_2","
                "cholesterol_medication_2","BP_medication_2","insulin_medication_2",
                "cholesterol_medication_3","BP_medication_3","insulin_medication_3",
                "DM_0","DM_1","DM_2","DM_3",
-               "MetS_NCEPATPIII_0","MetS_NCEPATPIII_1","MetS_IDF_0","MetS_IDF_1", 
-               "MetS_NCEPATPIII_count_0", "MetS_NCEPATPIII_count_1", "MetS_IDF_count_0", "MetS_IDF_count_1",
+               "MetS_NCEPATPIII_0","MetS_NCEPATPIII_1","MetS_IDF_0","MetS_IDF_1",
                "angina_self_0","angina_self_1","angina_self_2","angina_self_3",
                "heartattack_or_MI_self_0","heartattack_or_MI_self_1","heartattack_or_MI_self_2","heartattack_or_MI_self_3",
                "ischaemicstroke_self_0","ischaemicstroke_self_1","ischaemicstroke_self_2","ischaemicstroke_self_3",
@@ -618,20 +696,23 @@ factor_vars<-c("sex", "smoking_status_0","smoking_status_1","smoking_status_2","
                "heartattack_diagnosed_0","angina_diagnosed_0","stroke_diagnosed_0","HT_diagnosed_0",
                "heartattack_diagnosed_1","angina_diagnosed_1","stroke_diagnosed_1","HT_diagnosed_1",
                "heartattack_diagnosed_2","angina_diagnosed_2","stroke_diagnosed_2","HT_diagnosed_2",
-              "death_outcome",  "dementia_outcome","parkinson_outcome","asthma_outcome","COPD_outcome","endstage_renal_disease_outcome","motor_neuron_disease_outcome","MI_outcome","stroke_outcome",
                paste0("education_college_university_",0:3),
                paste0("education_A_AS_",0:3),
                paste0("education_O_GCSEs_",0:3),
                paste0("education_CSEs_",0:3),
                paste0("education_NVQ_HND_HNC_",0:3),
                paste0("education_other_professional_",0:3),
-               paste0("education_school_never_",0:2))
+               paste0("education_school_never_",0:2),
+               events,"ethnicity_group",
+               "MetS_NCEPATPIII_count_0","MetS_NCEPATPIII_count_1","MetS_IDF_count_0","MetS_IDF_count_1")
 out[,(factor_vars):=lapply(.SD,as.factor),.SDcols=factor_vars]
 
 out.label <- jstable::mk.lev(out)
+out.label[variable == "ethnicity_group", `:=`(val_label = c("White", "Mixed", "Asian or Asian British", "Black or Black British", 
+                                                            "Chinese", "Other", "Do not know", "Prefer not to answer"))]
+
 
 # label.main[variable == " ", `:=`(var_label = " ", val_label = c("","",""))]
+
 #saveRDS(list(data = out, label = out.label), "data.RDS")
-
-
 #fst::write_fst(out, "data.fst");saveRDS(list(factor_vars = factor_vars, label= out.label, varlist = varlist), "info.RDS")
