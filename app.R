@@ -646,7 +646,7 @@ server <- function(input, output, session) {
                              }
                              
                              
-                             devEMF::emf(file, width = 15, height = 20, coordDPI = 300, emfPlus = T)
+                             devEMF::emf(file, width = 15, height = 5, coordDPI = 300, emfPlus = T)
                              data <- tbsub()
                              
                              
@@ -671,8 +671,9 @@ server <- function(input, output, session) {
                                                                    xlab=gpar(cex = 1.2),
                                                                    title=gpar(cex = 1.2)),
                                                     col=fpColors(box="black", lines="black", zero = "gray50"),
-                                                    zero=1, cex=0.9, lineheight = "auto", boxsize=0.1, colgap=unit(6,"mm"),
-                                                    lwd.ci=2, ci.vertices=F, ci.vertices.height = 0.4) 
+                                                    zero=1, cex=0.9, lineheight = "auto", boxsize=0.4, colgap=unit(6,"mm"),
+                                                    lwd.ci=2, ci.vertices=F, ci.vertices.height = 0.4) -> zz
+                             print(zz)
                              grDevices::dev.off()
                          })
             
