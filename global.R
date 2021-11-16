@@ -675,6 +675,11 @@ varlist <- list(
 
 out <- cbind(a, days)[, .SD, .SDcols = unlist(varlist)]
 
+## year
+for (v in colnames(days)){
+  out[[v]] <- out[[v]]/365
+}
+
 factor_vars<-c("sex", "smoking_status_0","smoking_status_1","smoking_status_2","smoking_status_3",
                "alcohol_status_0","alcohol_status_1","alcohol_status_2","alcohol_status_3",
                "alcohol_addiction",paste0("alcohol_frequency_",0:3),"DM_self_0","DM_self_1","DM_self_2","DM_self_3",

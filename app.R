@@ -81,7 +81,7 @@ ui <- navbarPage("UK biobank",
                             tabPanel("Cox model",
                                      sidebarLayout(
                                          sidebarPanel(
-                                             radioButtons("dep_cox", "Outcome", choices = vars.surv, selected = vars.surv[1], inline = T),
+                                             selectInput("dep_cox", "Outcome", choices = varlist$Event, selected = varlist$Event[1]),
                                              sliderInput("year_cox", "Cut year", min = 0 , max = 15, value = c(0, 15)),
                                              selectInput("cov_cox", "Covariates", choices = varlist[c(1, 4)], selected = "MetS_NCEPATPIII_0", multiple = T),
                                              actionBttn("action_cox", "Run cox")
@@ -102,7 +102,7 @@ ui <- navbarPage("UK biobank",
                  tabPanel("Subgroup analysis",
                           sidebarLayout(
                               sidebarPanel(
-                                  radioButtons("dep_tbsub", "Outcome", choices = vars.surv, selected = vars.surv[1], inline = T),
+                                  selectInput("dep_tbsub", "Outcome", choices = varlist$Event, selected = varlist$Event[1]),
                                   sliderInput("year_tbsub", "Cut year", min = 0 , max = 15, value = c(0, 15)),
                                   selectInput("group_tbsub", "Main variable", varlist[[1]][1:4], "MetS_NCEPATPIII_0"),
                                   selectInput("subgroup_tbsub", "Subgroup to analyze", intersect(varlist$Base, factor_vars), "sex", multiple = T),
@@ -392,7 +392,7 @@ server <- function(input, output, session) {
     
     
     
-    out_tb1 <- callModule(tb1module2, "tb1", data = data, data_label = data.label, data_varStruct = NULL, nfactor.limit = nfactor.limit, showAllLevels = T)
+    out_tb1 <- callModule(tb1module2, "tb1", data = data, data_label = data.label, data_varStruct = NULL, nfactor.limit = nfactor.limit, showAllLevels = F)
     
     output$table1 <- renderDT({
         tb <- out_tb1()$table
@@ -449,8 +449,8 @@ server <- function(input, output, session) {
         label <- data.label()
         
         
-        var.event <- paste0(input$dep_cox, "_outcome")
-        var.day <- paste0(input$dep_cox, "_day")
+        var.event <- input$dep_cox
+        var.day <- varlist$Time[which(varlist$Event == var.event)]
         
         data <- data[!( get(var.day) < input$year_cox[1]) & get(var.day) > 0]
         
@@ -565,8 +565,8 @@ server <- function(input, output, session) {
         label <- data.label()
         
         
-        var.event <- paste0(input$dep_tbsub, "_outcome")
-        var.day <- paste0(input$dep_tbsub, "_day")
+        var.event <- input$dep_tbsub
+        var.day <- varlist$Time[which(varlist$Event == var.event)]
         
         data <- data[!( get(var.day) <= input$year_tbsub[1]) & !(is.na(get(group.tbsub())))]
         
