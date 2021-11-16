@@ -716,7 +716,6 @@ out.label <- jstable::mk.lev(out)
 out.label[variable == "ethnicity_group", `:=`(val_label = c("White", "Mixed", "Asian or Asian British", "Black or Black British", 
                                                             "Chinese", "Other", "Do not know", "Prefer not to answer"))]
 
-
 # label.main[variable == " ", `:=`(var_label = " ", val_label = c("","",""))]
 
 #saveRDS(list(data = out, label = out.label), "data.RDS")
