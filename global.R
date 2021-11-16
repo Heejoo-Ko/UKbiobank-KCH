@@ -668,12 +668,17 @@ varlist <- list(
            paste0("education_other_professional_",0:3),
            paste0("education_school_never_",0:2),
            paste0("education_age_completed_full_time_education_",0:2),
-           "ethnicity","ethnicity_group","MET_activity"
-           ),
+           "ethnicity_group","MET_activity"
+  ),
   MRI = grep(pattern='dMRI_|T1_', x=names(a), value = T)
 )
 
 out <- cbind(a, days)[, .SD, .SDcols = unlist(varlist)]
+
+## year
+for (v in colnames(days)){
+  out[[v]] <- out[[v]]/365
+}
 
 factor_vars<-c("sex", "smoking_status_0","smoking_status_1","smoking_status_2","smoking_status_3",
                "alcohol_status_0","alcohol_status_1","alcohol_status_2","alcohol_status_3",
@@ -703,11 +708,13 @@ factor_vars<-c("sex", "smoking_status_0","smoking_status_1","smoking_status_2","
                paste0("education_NVQ_HND_HNC_",0:3),
                paste0("education_other_professional_",0:3),
                paste0("education_school_never_",0:2),
-               events,"ethnicity","ethnicity_group",
+               events,"ethnicity_group",
                "MetS_NCEPATPIII_count_0","MetS_NCEPATPIII_count_1","MetS_IDF_count_0","MetS_IDF_count_1")
 out[,(factor_vars):=lapply(.SD,as.factor),.SDcols=factor_vars]
 
 out.label <- jstable::mk.lev(out)
+out.label[variable == "ethnicity_group", `:=`(val_label = c("White", "Mixed", "Asian or Asian British", "Black or Black British", 
+                                                            "Chinese", "Other", "Do not know", "Prefer not to answer"))]
 
 # label.main[variable == " ", `:=`(var_label = " ", val_label = c("","",""))]
 
