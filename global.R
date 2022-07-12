@@ -1,7 +1,12 @@
 library(data.table);library(magrittr);library(parallel);library(fst);library(stats);library(imputeTS);library(readxl)
 
-#setwd("/home/js/ShinyApps/chi-hun.kim/UKbiobank-KCH")
-bd <- fst::read_fst("/home/heejooko/ShinyApps/UKbiobank/ukb47038.fst", as.data.table = T)
+# setwd("/home/js/UKbiobank/UKbiobank2022")
+# list.files(path=".", pattern=NULL, all.files=FALSE, full.names=FALSE)
+
+mydata <-read.delim("ukb49960.tab", header = TRUE, sep = "\t", quote = "")
+mydata <- as.data.table(mydata)
+
+# bd <- fst::read_fst("/home/heejooko/ShinyApps/UKbiobank/ukb47038.fst", as.data.table = T)
 
 a<-data.table()
 
@@ -12,20 +17,20 @@ a<-data.table()
 # _3	First repeat imaging visit (2019+)
 
 #Population characteristics------------------------------------------------------------------
-a$ID<-bd$f.eid
-a$age<-bd$f.21022.0.0 #age at recruitment [years]
-a$sex<-ifelse(bd$f.31.0.0==0,"F","M")
-a$townsend_deprivation_index<-bd$f.189.0.0
-a$visit_date_0<-bd$f.53.0.0
-a$visit_date_1<-bd$f.53.1.0
-a$visit_date_2<-bd$f.53.2.0
-a$visit_date_3<-bd$f.53.3.0
+a$ID<-mydata$f.eid
+a$age<-mydata$f.21022.0.0 #age at recruitment [years]
+a$sex<-ifelse(mydata$f.31.0.0==0,"F","M")
+a$townsend_deprivation_index<-mydata$f.189.0.0
+a$visit_date_0<-mydata$f.53.0.0
+a$visit_date_1<-mydata$f.53.1.0
+a$visit_date_2<-mydata$f.53.2.0
+a$visit_date_3<-mydata$f.53.3.0
 
 #BMI [kg/m2]
-a$bmi_0<-bd$f.21001.0.0
-a$bmi_1<-bd$f.21001.1.0
-a$bmi_2<-bd$f.21001.2.0
-a$bmi_3<-bd$f.21001.3.0
+a$bmi_0<-mydata$f.21001.0.0
+a$bmi_1<-mydata$f.21001.1.0
+a$bmi_2<-mydata$f.21001.2.0
+a$bmi_3<-mydata$f.21001.3.0
 
 #ethnicity
 # 1	White	1	Top
@@ -51,61 +56,61 @@ a$bmi_3<-bd$f.21001.3.0
 # -1->9999	Do not know	-1	Top
 # -3->9997	Prefer not to answer	-3	Top
 
-a$ethnicity<-bd$f.21000.0.0 %% 10000
+a$ethnicity<-mydata$f.21000.0.0 %% 10000
 a$ethnicity_group<-a$ethnicity %% 1000
 
 #Summed MET minutes per week for all activity 22040 없어서 walking, moderate, vigorous 더해서 구함
 #[minutes/week]
-a$MET_activity<-bd$f.22037.0.0+bd$f.22038.0.0+bd$f.22039.0.0
+a$MET_activity<-mydata$f.22037.0.0+mydata$f.22038.0.0+mydata$f.22039.0.0
 
 #Smoking
 # -3->9	Prefer not to answer / 0	Never / 1	Previous / 2	Current
-a$smoking_status_0<-ifelse(bd$f.20116.0.0==-3,9,bd$f.20116.0.0)
-a$smoking_status_1<-ifelse(bd$f.20116.1.0==-3,9,bd$f.20116.1.0)
-a$smoking_status_2<-ifelse(bd$f.20116.2.0==-3,9,bd$f.20116.2.0)
-a$smoking_status_3<-ifelse(bd$f.20116.3.0==-3,9,bd$f.20116.3.0)
+a$smoking_status_0<-ifelse(mydata$f.20116.0.0==-3,9,mydata$f.20116.0.0)
+a$smoking_status_1<-ifelse(mydata$f.20116.1.0==-3,9,mydata$f.20116.1.0)
+a$smoking_status_2<-ifelse(mydata$f.20116.2.0==-3,9,mydata$f.20116.2.0)
+a$smoking_status_3<-ifelse(mydata$f.20116.3.0==-3,9,mydata$f.20116.3.0)
 
-a$smoking_stop_age<-bd$f.22507.0.0
+a$smoking_stop_age<-mydata$f.22507.0.0
 
-a$smoking_packyears_0<-bd$f.20161.0.0
-a$smoking_packyears_1<-bd$f.20161.1.0
-a$smoking_packyears_2<-bd$f.20161.2.0
-a$smoking_packyears_3<-bd$f.20161.3.0
+a$smoking_packyears_0<-mydata$f.20161.0.0
+a$smoking_packyears_1<-mydata$f.20161.1.0
+a$smoking_packyears_2<-mydata$f.20161.2.0
+a$smoking_packyears_3<-mydata$f.20161.3.0
 
 #Alcohol
 # -3->9	Prefer not to answer / 0	Never / 1	Previous / 2	Current
-a$alcohol_status_0<-ifelse(bd$f.20117.0.0==-3,9,bd$f.20117.0.0)
-a$alcohol_status_1<-ifelse(bd$f.20117.1.0==-3,9,bd$f.20117.1.0)
-a$alcohol_status_2<-ifelse(bd$f.20117.2.0==-3,9,bd$f.20117.2.0)
-a$alcohol_status_3<-ifelse(bd$f.20117.3.0==-3,9,bd$f.20117.3.0)
+a$alcohol_status_0<-ifelse(mydata$f.20117.0.0==-3,9,mydata$f.20117.0.0)
+a$alcohol_status_1<-ifelse(mydata$f.20117.1.0==-3,9,mydata$f.20117.1.0)
+a$alcohol_status_2<-ifelse(mydata$f.20117.2.0==-3,9,mydata$f.20117.2.0)
+a$alcohol_status_3<-ifelse(mydata$f.20117.3.0==-3,9,mydata$f.20117.3.0)
 
 # 1	Daily or almost daily / 2	Three or four times a week / 3	Once or twice a week / 4	One to three times a month / 5	Special occasions only / 6	Never / -3->9	Prefer not to answer
-a$alcohol_frequency_0<-ifelse(bd$f.1558.0.0==-3,9,bd$f.1558.0.0)
-a$alcohol_frequency_1<-ifelse(bd$f.1558.1.0==-3,9,bd$f.1558.1.0)
-a$alcohol_frequency_2<-ifelse(bd$f.1558.2.0==-3,9,bd$f.1558.2.0)
-a$alcohol_frequency_3<-ifelse(bd$f.1558.3.0==-3,9,bd$f.1558.3.0)
+a$alcohol_frequency_0<-ifelse(mydata$f.1558.0.0==-3,9,mydata$f.1558.0.0)
+a$alcohol_frequency_1<-ifelse(mydata$f.1558.1.0==-3,9,mydata$f.1558.1.0)
+a$alcohol_frequency_2<-ifelse(mydata$f.1558.2.0==-3,9,mydata$f.1558.2.0)
+a$alcohol_frequency_3<-ifelse(mydata$f.1558.3.0==-3,9,mydata$f.1558.3.0)
 
 # -818->8	Prefer not to answer / -121->9	Do not know / 0	No / 1	Yes : ever addicted to alcohol
-a$alcohol_addiction<-ifelse(bd$f.20406.0.0==-818,8,
-                            ifelse(bd$f.20406.0.0==-121,9,bd$f.20406.0.0))
+a$alcohol_addiction<-ifelse(mydata$f.20406.0.0==-818,8,
+                            ifelse(mydata$f.20406.0.0==-121,9,mydata$f.20406.0.0))
 
 #Exposures------------------------------------------------------------------
 #DM
 #Non-cancer illness, self-reported
-myCol<-colnames(bd)[grep("f.20002.0.",colnames(bd))]
-a$noncancer_illness_self_0<-bd[,..myCol][, do.call(paste, c(.SD, sep = "_")),]
+myCol<-colnames(mydata)[grep("f.20002.0.",colnames(mydata))]
+a$noncancer_illness_self_0<-mydata[,..myCol][, do.call(paste, c(.SD, sep = "_")),]
 a$noncancer_illness_self_0<-lapply(a$noncancer_illness_self_0,function(x){gsub("_NA","",x)}) %>% unlist
 
-myCol<-colnames(bd)[grep("f.20002.1.",colnames(bd))]
-a$noncancer_illness_self_1<-bd[,..myCol][, do.call(paste, c(.SD, sep = "_")),]
+myCol<-colnames(mydata)[grep("f.20002.1.",colnames(mydata))]
+a$noncancer_illness_self_1<-mydata[,..myCol][, do.call(paste, c(.SD, sep = "_")),]
 a$noncancer_illness_self_1<-lapply(a$noncancer_illness_self_1,function(x){gsub("_NA","",x)}) %>% unlist
 
-myCol<-colnames(bd)[grep("f.20002.2.",colnames(bd))]
-a$noncancer_illness_self_2<-bd[,..myCol][, do.call(paste, c(.SD, sep = "_")),]
+myCol<-colnames(mydata)[grep("f.20002.2.",colnames(mydata))]
+a$noncancer_illness_self_2<-mydata[,..myCol][, do.call(paste, c(.SD, sep = "_")),]
 a$noncancer_illness_self_2<-lapply(a$noncancer_illness_self_2,function(x){gsub("_NA","",x)}) %>% unlist
 
-myCol<-colnames(bd)[grep("f.20002.3.",colnames(bd))]
-a$noncancer_illness_self_3<-bd[,..myCol][, do.call(paste, c(.SD, sep = "_")),]
+myCol<-colnames(mydata)[grep("f.20002.3.",colnames(mydata))]
+a$noncancer_illness_self_3<-mydata[,..myCol][, do.call(paste, c(.SD, sep = "_")),]
 a$noncancer_illness_self_3<-lapply(a$noncancer_illness_self_3,function(x){gsub("_NA","",x)}) %>% unlist
 
 a$DM_self_0<-ifelse(grepl(pattern='1220|1221|1222|1223',x=a$noncancer_illness_self_0),1,0)
@@ -113,127 +118,129 @@ a$DM_self_1<-ifelse(grepl(pattern='1220|1221|1222|1223',x=a$noncancer_illness_se
 a$DM_self_2<-ifelse(grepl(pattern='1220|1221|1222|1223',x=a$noncancer_illness_self_2),1,0)
 a$DM_self_3<-ifelse(grepl(pattern='1220|1221|1222|1223',x=a$noncancer_illness_self_3),1,0)
 
-a$DM_diagnosed_0<-ifelse(bd$f.2443.0.0==1,1,ifelse(bd$f.2443.0.0==0,0,NA))
-a$DM_diagnosed_1<-ifelse(bd$f.2443.1.0==1,1,ifelse(bd$f.2443.1.0==0,0,NA))
-a$DM_diagnosed_2<-ifelse(bd$f.2443.2.0==1,1,ifelse(bd$f.2443.2.0==0,0,NA))
-a$DM_diagnosed_3<-ifelse(bd$f.2443.3.0==1,1,ifelse(bd$f.2443.3.0==0,0,NA))
+a$DM_diagnosed_0<-ifelse(mydata$f.2443.0.0==1,1,ifelse(mydata$f.2443.0.0==0,0,NA))
+a$DM_diagnosed_1<-ifelse(mydata$f.2443.1.0==1,1,ifelse(mydata$f.2443.1.0==0,0,NA))
+a$DM_diagnosed_2<-ifelse(mydata$f.2443.2.0==1,1,ifelse(mydata$f.2443.2.0==0,0,NA))
+a$DM_diagnosed_3<-ifelse(mydata$f.2443.3.0==1,1,ifelse(mydata$f.2443.3.0==0,0,NA))
 
-a$gestational_DM_0<-ifelse(bd$f.4041.0.0==1,1,ifelse(bd$f.4041.0.0==0,0,NA))
-a$gestational_DM_1<-ifelse(bd$f.4041.1.0==1,1,ifelse(bd$f.4041.1.0==0,0,NA))
-a$gestational_DM_2<-ifelse(bd$f.4041.2.0==1,1,ifelse(bd$f.4041.2.0==0,0,NA))
-a$gestational_DM_3<-ifelse(bd$f.4041.3.0==1,1,ifelse(bd$f.4041.3.0==0,0,NA))
+a$gestational_DM_0<-ifelse(mydata$f.4041.0.0==1,1,ifelse(mydata$f.4041.0.0==0,0,NA))
+a$gestational_DM_1<-ifelse(mydata$f.4041.1.0==1,1,ifelse(mydata$f.4041.1.0==0,0,NA))
+a$gestational_DM_2<-ifelse(mydata$f.4041.2.0==1,1,ifelse(mydata$f.4041.2.0==0,0,NA))
+a$gestational_DM_3<-ifelse(mydata$f.4041.3.0==1,1,ifelse(mydata$f.4041.3.0==0,0,NA))
 
-a$age_DM_diagnosed_0<-ifelse(bd$f.2976.0.0 %in% c(-1,-3),NA,bd$f.2976.0.0)
-a$age_DM_diagnosed_1<-ifelse(bd$f.2976.1.0 %in% c(-1,-3),NA,bd$f.2976.1.0)
-a$age_DM_diagnosed_2<-ifelse(bd$f.2976.2.0 %in% c(-1,-3),NA,bd$f.2976.2.0)
-a$age_DM_diagnosed_3<-ifelse(bd$f.2976.3.0 %in% c(-1,-3),NA,bd$f.2976.3.0)
+a$age_DM_diagnosed_0<-ifelse(mydata$f.2976.0.0 %in% c(-1,-3),NA,mydata$f.2976.0.0)
+a$age_DM_diagnosed_1<-ifelse(mydata$f.2976.1.0 %in% c(-1,-3),NA,mydata$f.2976.1.0)
+a$age_DM_diagnosed_2<-ifelse(mydata$f.2976.2.0 %in% c(-1,-3),NA,mydata$f.2976.2.0)
+a$age_DM_diagnosed_3<-ifelse(mydata$f.2976.3.0 %in% c(-1,-3),NA,mydata$f.2976.3.0)
 
-#f.2986 없음
-# a$insulin_within_1y_diagnosed_DM_0<-ifelse(bd$f.2986.0.0 %in% c(-1,-3),NA,bd$f.2986.0.0)
-# a$insulin_within_1y_diagnosed_DM_1<-ifelse(bd$f.2986.1.0 %in% c(-1,-3),NA,bd$f.2986.1.0)
-# a$insulin_within_1y_diagnosed_DM_2<-ifelse(bd$f.2986.2.0 %in% c(-1,-3),NA,bd$f.2986.2.0)
-# a$insulin_within_1y_diagnosed_DM_3<-ifelse(bd$f.2986.3.0 %in% c(-1,-3),NA,bd$f.2986.3.0)
+# f.2986 누락되었던 것 추가
+a$insulin_within_1y_diagnosed_DM_0<-ifelse(mydata$f.2986.0.0 %in% c(-1,-3),NA,mydata$f.2986.0.0)
+a$insulin_within_1y_diagnosed_DM_1<-ifelse(mydata$f.2986.1.0 %in% c(-1,-3),NA,mydata$f.2986.1.0)
+a$insulin_within_1y_diagnosed_DM_2<-ifelse(mydata$f.2986.2.0 %in% c(-1,-3),NA,mydata$f.2986.2.0)
+a$insulin_within_1y_diagnosed_DM_3<-ifelse(mydata$f.2986.3.0 %in% c(-1,-3),NA,mydata$f.2986.3.0)
 
 #[mmol/L]
-a$glucose_0<-bd$f.30740.0.0
-a$glucose_1<-bd$f.30740.1.0
+a$glucose_0<-mydata$f.30740.0.0
+a$glucose_1<-mydata$f.30740.1.0
 
 #[mmol/mol]
-a$HbA1c_0<-bd$f.30750.0.0
-a$HbA1c_1<-bd$f.30750.1.0
+a$HbA1c_0<-mydata$f.30750.0.0
+a$HbA1c_1<-mydata$f.30750.1.0
 
-#fasting time 74가 없다
-# a$fasting_time_0<-bd$f.74.0.0
-# a$fasting_time_1<-bd$f.74.1.0
+#fasting time f.74 누락되었던 것 추가 
+a$fasting_time_0<-mydata$f.74.0.0
+a$fasting_time_1<-mydata$f.74.1.0
+a$fasting_time_2<-mydata$f.74.2.0
+a$fasting_time_3<-mydata$f.74.3.0
 
 #BP
 #[mmHg]
-myCol<-colnames(bd)[grep("f.4080.0.",colnames(bd))]
-a$sysBP_automated_0<-bd[,..myCol][,rowMeans(.SD,na.rm=T),]
-myCol<-colnames(bd)[grep("f.93.0.",colnames(bd))]
-a$sysBP_manual_0<-bd[,..myCol][,rowMeans(.SD,na.rm=T),]
+myCol<-colnames(mydata)[grep("f.4080.0.",colnames(mydata))]
+a$sysBP_automated_0<-mydata[,..myCol][,rowMeans(.SD,na.rm=T),]
+myCol<-colnames(mydata)[grep("f.93.0.",colnames(mydata))]
+a$sysBP_manual_0<-mydata[,..myCol][,rowMeans(.SD,na.rm=T),]
 
-myCol<-colnames(bd)[grep("f.4080.1.",colnames(bd))]
-a$sysBP_automated_1<-bd[,..myCol][,rowMeans(.SD,na.rm=T),]
-myCol<-colnames(bd)[grep("f.93.1.",colnames(bd))]
-a$sysBP_manual_1<-bd[,..myCol][,rowMeans(.SD,na.rm=T),]
+myCol<-colnames(mydata)[grep("f.4080.1.",colnames(mydata))]
+a$sysBP_automated_1<-mydata[,..myCol][,rowMeans(.SD,na.rm=T),]
+myCol<-colnames(mydata)[grep("f.93.1.",colnames(mydata))]
+a$sysBP_manual_1<-mydata[,..myCol][,rowMeans(.SD,na.rm=T),]
 
-myCol<-colnames(bd)[grep("f.4080.2.",colnames(bd))]
-a$sysBP_automated_2<-bd[,..myCol][,rowMeans(.SD,na.rm=T),]
-myCol<-colnames(bd)[grep("f.93.2.",colnames(bd))]
-a$sysBP_manual_2<-bd[,..myCol][,rowMeans(.SD,na.rm=T),]
+myCol<-colnames(mydata)[grep("f.4080.2.",colnames(mydata))]
+a$sysBP_automated_2<-mydata[,..myCol][,rowMeans(.SD,na.rm=T),]
+myCol<-colnames(mydata)[grep("f.93.2.",colnames(mydata))]
+a$sysBP_manual_2<-mydata[,..myCol][,rowMeans(.SD,na.rm=T),]
 
-myCol<-colnames(bd)[grep("f.4080.3.",colnames(bd))]
-a$sysBP_automated_3<-bd[,..myCol][,rowMeans(.SD,na.rm=T),]
-myCol<-colnames(bd)[grep("f.93.3.",colnames(bd))]
-a$sysBP_manual_3<-bd[,..myCol][,rowMeans(.SD,na.rm=T),]
+myCol<-colnames(mydata)[grep("f.4080.3.",colnames(mydata))]
+a$sysBP_automated_3<-mydata[,..myCol][,rowMeans(.SD,na.rm=T),]
+myCol<-colnames(mydata)[grep("f.93.3.",colnames(mydata))]
+a$sysBP_manual_3<-mydata[,..myCol][,rowMeans(.SD,na.rm=T),]
 
 a$sysBP_0<-ifelse(is.na(a$sysBP_manual_0),a$sysBP_automated_0,a$sysBP_manual_0)
 a$sysBP_1<-ifelse(is.na(a$sysBP_manual_1),a$sysBP_automated_1,a$sysBP_manual_1)
 a$sysBP_2<-ifelse(is.na(a$sysBP_manual_2),a$sysBP_automated_2,a$sysBP_manual_2)
 a$sysBP_3<-ifelse(is.na(a$sysBP_manual_3),a$sysBP_automated_3,a$sysBP_manual_3)
 
-myCol<-colnames(bd)[grep("f.4079.0.",colnames(bd))]
-a$diaBP_automated_0<-bd[,..myCol][,rowMeans(.SD,na.rm=T),]
-myCol<-colnames(bd)[grep("f.94.0.",colnames(bd))]
-a$diaBP_manual_0<-bd[,..myCol][,rowMeans(.SD,na.rm=T),]
+myCol<-colnames(mydata)[grep("f.4079.0.",colnames(mydata))]
+a$diaBP_automated_0<-mydata[,..myCol][,rowMeans(.SD,na.rm=T),]
+myCol<-colnames(mydata)[grep("f.94.0.",colnames(mydata))]
+a$diaBP_manual_0<-mydata[,..myCol][,rowMeans(.SD,na.rm=T),]
 
-myCol<-colnames(bd)[grep("f.4079.1.",colnames(bd))]
-a$diaBP_automated_1<-bd[,..myCol][,rowMeans(.SD,na.rm=T),]
-myCol<-colnames(bd)[grep("f.94.1.",colnames(bd))]
-a$diaBP_manual_1<-bd[,..myCol][,rowMeans(.SD,na.rm=T),]
+myCol<-colnames(mydata)[grep("f.4079.1.",colnames(mydata))]
+a$diaBP_automated_1<-mydata[,..myCol][,rowMeans(.SD,na.rm=T),]
+myCol<-colnames(mydata)[grep("f.94.1.",colnames(mydata))]
+a$diaBP_manual_1<-mydata[,..myCol][,rowMeans(.SD,na.rm=T),]
 
-myCol<-colnames(bd)[grep("f.4079.2.",colnames(bd))]
-a$diaBP_automated_2<-bd[,..myCol][,rowMeans(.SD,na.rm=T),]
-myCol<-colnames(bd)[grep("f.94.2.",colnames(bd))]
-a$diaBP_manual_2<-bd[,..myCol][,rowMeans(.SD,na.rm=T),]
+myCol<-colnames(mydata)[grep("f.4079.2.",colnames(mydata))]
+a$diaBP_automated_2<-mydata[,..myCol][,rowMeans(.SD,na.rm=T),]
+myCol<-colnames(mydata)[grep("f.94.2.",colnames(mydata))]
+a$diaBP_manual_2<-mydata[,..myCol][,rowMeans(.SD,na.rm=T),]
 
-myCol<-colnames(bd)[grep("f.4079.3.",colnames(bd))]
-a$diaBP_automated_3<-bd[,..myCol][,rowMeans(.SD,na.rm=T),]
-myCol<-colnames(bd)[grep("f.94.3.",colnames(bd))]
-a$diaBP_manual_3<-bd[,..myCol][,rowMeans(.SD,na.rm=T),]
+myCol<-colnames(mydata)[grep("f.4079.3.",colnames(mydata))]
+a$diaBP_automated_3<-mydata[,..myCol][,rowMeans(.SD,na.rm=T),]
+myCol<-colnames(mydata)[grep("f.94.3.",colnames(mydata))]
+a$diaBP_manual_3<-mydata[,..myCol][,rowMeans(.SD,na.rm=T),]
 
 a$diaBP_0<-ifelse(is.na(a$diaBP_manual_0),a$diaBP_automated_0,a$diaBP_manual_0)
 a$diaBP_1<-ifelse(is.na(a$diaBP_manual_1),a$diaBP_automated_1,a$diaBP_manual_1)
 a$diaBP_2<-ifelse(is.na(a$diaBP_manual_2),a$diaBP_automated_2,a$diaBP_manual_2)
 a$diaBP_3<-ifelse(is.na(a$diaBP_manual_3),a$diaBP_automated_3,a$diaBP_manual_3)
 
-#Abdominal obesity
+#Amydataominal obesity
 #[cm]
-a$WC_0<-bd$f.48.0.0
-a$WC_1<-bd$f.48.1.0
-a$WC_2<-bd$f.48.2.0
-a$WC_3<-bd$f.48.3.0
+a$WC_0<-mydata$f.48.0.0
+a$WC_1<-mydata$f.48.1.0
+a$WC_2<-mydata$f.48.2.0
+a$WC_3<-mydata$f.48.3.0
 
 #Lipidic profile
 #[mmol/L]
-a$TG_0<-bd$f.30870.0.0
-a$TG_1<-bd$f.30870.1.0
+a$TG_0<-mydata$f.30870.0.0
+a$TG_1<-mydata$f.30870.1.0
 
-a$HDL_0<-bd$f.30760.0.0
-a$HDL_1<-bd$f.30760.1.0
+a$HDL_0<-mydata$f.30760.0.0
+a$HDL_1<-mydata$f.30760.1.0
 
 #Insulin
 #serum insulin 변수 못 찾음
 
 #Medication
 # 1	Cholesterol lowering medication / 2	Blood pressure medication / 3	Insulin / -7	None of the above / -1	Do not know / -3	Prefer not to answer
-temp<-paste0(bd$f.6177.0.0," ",bd$f.6177.0.1," ",bd$f.6177.0.2)
+temp<-paste0(mydata$f.6177.0.0," ",mydata$f.6177.0.1," ",mydata$f.6177.0.2)
 a$cholesterol_medication_0<-ifelse(grepl("1",temp),"1","0")
 a$BP_medication_0<-ifelse(grepl("2",temp),"1","0")
 a$insulin_medication_0<-ifelse(grepl("3",temp),"1","0")
 
-temp<-paste0(bd$f.6177.1.0," ",bd$f.6177.1.1," ",bd$f.6177.1.2)
+temp<-paste0(mydata$f.6177.1.0," ",mydata$f.6177.1.1," ",mydata$f.6177.1.2)
 a$cholesterol_medication_1<-ifelse(grepl("1",temp),"1","0")
 a$BP_medication_1<-ifelse(grepl("2",temp),"1","0")
 a$insulin_medication_1<-ifelse(grepl("3",temp),"1","0")
 
-temp<-paste0(bd$f.6177.2.0," ",bd$f.6177.2.1," ",bd$f.6177.2.2)
+temp<-paste0(mydata$f.6177.2.0," ",mydata$f.6177.2.1," ",mydata$f.6177.2.2)
 a$cholesterol_medication_2<-ifelse(grepl("1",temp),"1","0")
 a$BP_medication_2<-ifelse(grepl("2",temp),"1","0")
 a$insulin_medication_2<-ifelse(grepl("3",temp),"1","0")
 
-temp<-paste0(bd$f.6177.3.0," ",bd$f.6177.3.1," ",bd$f.6177.3.2)
+temp<-paste0(mydata$f.6177.3.0," ",mydata$f.6177.3.1," ",mydata$f.6177.3.2)
 a$cholesterol_medication_3<-ifelse(grepl("1",temp),"1","0")
 a$BP_medication_3<-ifelse(grepl("2",temp),"1","0")
 a$insulin_medication_3<-ifelse(grepl("3",temp),"1","0")
@@ -266,16 +273,16 @@ a$MetS_IDF_count_1<-as.integer(a$DM_1)+
   as.integer((a$TG_1>=1.7 & ((a$sex=="M" & a$HDL_1<1.03) | (a$sex=="F" & a$HDL_1<1.29))) | (a$cholesterol_medication_1==1))
 
 criteria_c<-((a$sex=="F" & a$WC_0>=80) | (a$sex=="M" & a$WC_0>=94))
-criteria_count_abd<-as.integer(a$DM_0)+
+criteria_count_amydata<-as.integer(a$DM_0)+
   as.integer(a$sysBP_0>=130 | a$diaBP_0>=85 | a$BP_medication_0==1)+
   as.integer((a$TG_0>=1.7 & ((a$sex=="M" & a$HDL_0<1.03) | (a$sex=="F" & a$HDL_0<1.29))) | (a$cholesterol_medication_0==1))
-a$MetS_IDF_0<-ifelse(is.na(criteria_c) | is.na(criteria_count_abd),NA,ifelse(criteria_c & criteria_count_abd>=2,1,0))
+a$MetS_IDF_0<-ifelse(is.na(criteria_c) | is.na(criteria_count_amydata),NA,ifelse(criteria_c & criteria_count_amydata>=2,1,0))
 
 criteria_c<-((a$sex=="F" & a$WC_1>=80) | (a$sex=="M" & a$WC_1>=94))
-criteria_count_abd<-as.integer(a$DM_1)+
+criteria_count_amydata<-as.integer(a$DM_1)+
   as.integer(a$sysBP_1>=130 | a$diaBP_1>=85 | a$BP_medication_1==1)+
   as.integer((a$TG_1>=1.7 & ((a$sex=="M" & a$HDL_1<1.03) | (a$sex=="F" & a$HDL_1<1.29))) | (a$cholesterol_medication_1==1))
-a$MetS_IDF_1<-ifelse(is.na(criteria_c) | is.na(criteria_count_abd),NA,ifelse(criteria_c & criteria_count_abd>=2,1,0))
+a$MetS_IDF_1<-ifelse(is.na(criteria_c) | is.na(criteria_count_amydata),NA,ifelse(criteria_c & criteria_count_amydata>=2,1,0))
 
 
 # sapply(c("MetS_NCEPATPIII_count_0","MetS_NCEPATPIII_count_1","MetS_IDF_count_0","MetS_IDF_count_1"),
@@ -287,12 +294,12 @@ a$MetS_IDF_1<-ifelse(is.na(criteria_c) | is.na(criteria_count_abd),NA,ifelse(cri
 
 #Biomarkers
 #IGF-1 [nmol/L]
-a$IGF1_0<-bd$f.30770.0.0
-a$IGF1_1<-bd$f.30770.1.0
+a$IGF1_0<-mydata$f.30770.0.0
+a$IGF1_1<-mydata$f.30770.1.0
 
 #SHBG [nmol/L]
-a$SHBG_0<-bd$f.30830.0.0
-a$SHBG_1<-bd$f.30830.1.0
+a$SHBG_0<-mydata$f.30830.0.0
+a$SHBG_1<-mydata$f.30830.1.0
 
 #education------------------------------------------------------------------
 #qualifications
@@ -305,7 +312,7 @@ a$SHBG_1<-bd$f.30830.1.0
 # -7	None of the above
 # -3	Prefer not to answer
 
-temp<-paste0(bd$f.6138.0.0," ",bd$f.6138.0.1," ",bd$f.6138.0.2," ",bd$f.6138.0.3," ",bd$f.6138.0.4," ",bd$f.6138.0.5)
+temp<-paste0(mydata$f.6138.0.0," ",mydata$f.6138.0.1," ",mydata$f.6138.0.2," ",mydata$f.6138.0.3," ",mydata$f.6138.0.4," ",mydata$f.6138.0.5)
 a$education_college_university_0<-ifelse(grepl("1",temp),1,0)
 a$education_A_AS_0<-ifelse(grepl("2",temp),1,0)
 a$education_O_GCSEs_0<-ifelse(grepl("3",temp),1,0)
@@ -313,7 +320,7 @@ a$education_CSEs_0<-ifelse(grepl("4",temp),1,0)
 a$education_NVQ_HND_HNC_0<-ifelse(grepl("5",temp),1,0)
 a$education_other_professional_0<-ifelse(grepl("6",temp),1,0)
 
-temp<-paste0(bd$f.6138.1.0," ",bd$f.6138.1.1," ",bd$f.6138.1.2," ",bd$f.6138.1.3," ",bd$f.6138.1.4," ",bd$f.6138.1.5)
+temp<-paste0(mydata$f.6138.1.0," ",mydata$f.6138.1.1," ",mydata$f.6138.1.2," ",mydata$f.6138.1.3," ",mydata$f.6138.1.4," ",mydata$f.6138.1.5)
 a$education_college_university_1<-ifelse(grepl("1",temp),1,0)
 a$education_A_AS_1<-ifelse(grepl("2",temp),1,0)
 a$education_O_GCSEs_1<-ifelse(grepl("3",temp),1,0)
@@ -321,7 +328,7 @@ a$education_CSEs_1<-ifelse(grepl("4",temp),1,0)
 a$education_NVQ_HND_HNC_1<-ifelse(grepl("5",temp),1,0)
 a$education_other_professional_1<-ifelse(grepl("6",temp),1,0)
 
-temp<-paste0(bd$f.6138.2.0," ",bd$f.6138.2.1," ",bd$f.6138.2.2," ",bd$f.6138.2.3," ",bd$f.6138.2.4," ",bd$f.6138.2.5)
+temp<-paste0(mydata$f.6138.2.0," ",mydata$f.6138.2.1," ",mydata$f.6138.2.2," ",mydata$f.6138.2.3," ",mydata$f.6138.2.4," ",mydata$f.6138.2.5)
 a$education_college_university_2<-ifelse(grepl("1",temp),1,0)
 a$education_A_AS_2<-ifelse(grepl("2",temp),1,0)
 a$education_O_GCSEs_2<-ifelse(grepl("3",temp),1,0)
@@ -329,7 +336,7 @@ a$education_CSEs_2<-ifelse(grepl("4",temp),1,0)
 a$education_NVQ_HND_HNC_2<-ifelse(grepl("5",temp),1,0)
 a$education_other_professional_2<-ifelse(grepl("6",temp),1,0)
 
-temp<-paste0(bd$f.6138.3.0," ",bd$f.6138.3.1," ",bd$f.6138.3.2," ",bd$f.6138.3.3," ",bd$f.6138.3.4," ",bd$f.6138.3.5)
+temp<-paste0(mydata$f.6138.3.0," ",mydata$f.6138.3.1," ",mydata$f.6138.3.2," ",mydata$f.6138.3.3," ",mydata$f.6138.3.4," ",mydata$f.6138.3.5)
 a$education_college_university_3<-ifelse(grepl("1",temp),1,0)
 a$education_A_AS_3<-ifelse(grepl("2",temp),1,0)
 a$education_O_GCSEs_3<-ifelse(grepl("3",temp),1,0)
@@ -342,14 +349,14 @@ a$education_other_professional_3<-ifelse(grepl("6",temp),1,0)
 # -1	Do not know
 # -3	Prefer not to answer
 
-a$education_school_never_0<-ifelse(grepl("-2",bd$f.845.0.0),1,0)
-a$education_age_completed_full_time_education_0<-ifelse(bd$f.845.0.0<0,NA,bd$f.845.0.0)
+a$education_school_never_0<-ifelse(grepl("-2",mydata$f.845.0.0),1,0)
+a$education_age_completed_full_time_education_0<-ifelse(mydata$f.845.0.0<0,NA,mydata$f.845.0.0)
 
-a$education_school_never_1<-ifelse(grepl("-2",bd$f.845.1.0),1,0)
-a$education_age_completed_full_time_education_1<-ifelse(bd$f.845.0.0<0,NA,bd$f.845.1.0)
+a$education_school_never_1<-ifelse(grepl("-2",mydata$f.845.1.0),1,0)
+a$education_age_completed_full_time_education_1<-ifelse(mydata$f.845.0.0<0,NA,mydata$f.845.1.0)
 
-a$education_school_never_2<-ifelse(grepl("-2",bd$f.845.0.0),1,0)
-a$education_age_completed_full_time_education_2<-ifelse(bd$f.845.0.0<0,NA,bd$f.845.2.0)
+a$education_school_never_2<-ifelse(grepl("-2",mydata$f.845.0.0),1,0)
+a$education_age_completed_full_time_education_2<-ifelse(mydata$f.845.0.0<0,NA,mydata$f.845.2.0)
 
 
 #Other past medical conditions------------------------------------------------------------------
@@ -388,48 +395,50 @@ a$maniabiopolar_self_1<-ifelse(grepl(pattern='1291',x=a$noncancer_illness_self_1
 a$maniabiopolar_self_2<-ifelse(grepl(pattern='1291',x=a$noncancer_illness_self_2),1,0)
 a$maniabiopolar_self_3<-ifelse(grepl(pattern='1291',x=a$noncancer_illness_self_3),1,0)
 
-temp<-paste0(bd$f.6150.0.0," ",bd$f.6150.0.1," ",bd$f.6150.0.2," ",bd$f.6150.0.3)
+temp<-paste0(mydata$f.6150.0.0," ",mydata$f.6150.0.1," ",mydata$f.6150.0.2," ",mydata$f.6150.0.3)
 a$heartattack_diagnosed_0<-ifelse(grepl("1",temp),"1","0")
 a$angina_diagnosed_0<-ifelse(grepl("2",temp),"1","0")
 a$stroke_diagnosed_0<-ifelse(grepl("3",temp),"1","0")
 a$HT_diagnosed_0<-ifelse(grepl("4",temp),"1","0")
 
-temp<-paste0(bd$f.6150.1.0," ",bd$f.6150.1.1," ",bd$f.6150.1.2," ",bd$f.6150.1.3)
+temp<-paste0(mydata$f.6150.1.0," ",mydata$f.6150.1.1," ",mydata$f.6150.1.2," ",mydata$f.6150.1.3)
 a$heartattack_diagnosed_1<-ifelse(grepl("1",temp),"1","0")
 a$angina_diagnosed_1<-ifelse(grepl("2",temp),"1","0")
 a$stroke_diagnosed_1<-ifelse(grepl("3",temp),"1","0")
 a$HT_diagnosed_1<-ifelse(grepl("4",temp),"1","0")
 
-temp<-paste0(bd$f.6150.2.0," ",bd$f.6150.2.1," ",bd$f.6150.2.2," ",bd$f.6150.2.3)
+temp<-paste0(mydata$f.6150.2.0," ",mydata$f.6150.2.1," ",mydata$f.6150.2.2," ",mydata$f.6150.2.3)
 a$heartattack_diagnosed_2<-ifelse(grepl("1",temp),"1","0")
 a$angina_diagnosed_2<-ifelse(grepl("2",temp),"1","0")
 a$stroke_diagnosed_2<-ifelse(grepl("3",temp),"1","0")
 a$HT_diagnosed_2<-ifelse(grepl("4",temp),"1","0")
 
+
 #-1 : do not know, -3 : prefer not to answer
-a$age_heartattack_diagnosed_0<-ifelse(bd$f.3894.0.0 %in% c(-1,-3),NA,bd$f.3894.0.0)
-a$age_heartattack_diagnosed_1<-ifelse(bd$f.3894.1.0 %in% c(-1,-3),NA,bd$f.3894.1.0)
-a$age_heartattack_diagnosed_2<-ifelse(bd$f.3894.2.0 %in% c(-1,-3),NA,bd$f.3894.2.0)
-a$age_heartattack_diagnosed_3<-ifelse(bd$f.3894.3.0 %in% c(-1,-3),NA,bd$f.3894.3.0)
+a$age_heartattack_diagnosed_0<-ifelse(mydata$f.3894.0.0 %in% c(-1,-3),NA,mydata$f.3894.0.0)
+a$age_heartattack_diagnosed_1<-ifelse(mydata$f.3894.1.0 %in% c(-1,-3),NA,mydata$f.3894.1.0)
+a$age_heartattack_diagnosed_2<-ifelse(mydata$f.3894.2.0 %in% c(-1,-3),NA,mydata$f.3894.2.0)
+a$age_heartattack_diagnosed_3<-ifelse(mydata$f.3894.3.0 %in% c(-1,-3),NA,mydata$f.3894.3.0)
 
-a$age_angina_diagnosed_0<-ifelse(bd$f.3627.0.0 %in% c(-1,-3),NA,bd$f.3627.0.0)
-a$age_angina_diagnosed_1<-ifelse(bd$f.3627.1.0 %in% c(-1,-3),NA,bd$f.3627.1.0)
-a$age_angina_diagnosed_2<-ifelse(bd$f.3627.2.0 %in% c(-1,-3),NA,bd$f.3627.2.0)
-a$age_angina_diagnosed_3<-ifelse(bd$f.3627.3.0 %in% c(-1,-3),NA,bd$f.3627.3.0)
+a$age_angina_diagnosed_0<-ifelse(mydata$f.3627.0.0 %in% c(-1,-3),NA,mydata$f.3627.0.0)
+a$age_angina_diagnosed_1<-ifelse(mydata$f.3627.1.0 %in% c(-1,-3),NA,mydata$f.3627.1.0)
+a$age_angina_diagnosed_2<-ifelse(mydata$f.3627.2.0 %in% c(-1,-3),NA,mydata$f.3627.2.0)
+a$age_angina_diagnosed_3<-ifelse(mydata$f.3627.3.0 %in% c(-1,-3),NA,mydata$f.3627.3.0)
 
-a$age_stroke_diagnosed_0<-ifelse(bd$f.4056.0.0 %in% c(-1,-3),NA,bd$f.4056.0.0)
-a$age_stroke_diagnosed_1<-ifelse(bd$f.4056.1.0 %in% c(-1,-3),NA,bd$f.4056.1.0)
-a$age_stroke_diagnosed_2<-ifelse(bd$f.4056.2.0 %in% c(-1,-3),NA,bd$f.4056.2.0)
-a$age_stroke_diagnosed_3<-ifelse(bd$f.4056.3.0 %in% c(-1,-3),NA,bd$f.4056.3.0)
+a$age_stroke_diagnosed_0<-ifelse(mydata$f.4056.0.0 %in% c(-1,-3),NA,mydata$f.4056.0.0)
+a$age_stroke_diagnosed_1<-ifelse(mydata$f.4056.1.0 %in% c(-1,-3),NA,mydata$f.4056.1.0)
+a$age_stroke_diagnosed_2<-ifelse(mydata$f.4056.2.0 %in% c(-1,-3),NA,mydata$f.4056.2.0)
+a$age_stroke_diagnosed_3<-ifelse(mydata$f.4056.3.0 %in% c(-1,-3),NA,mydata$f.4056.3.0)
 
-a$age_HT_diagnosed_0<-ifelse(bd$f.2966.0.0 %in% c(-1,-3),NA,bd$f.2966.0.0)
-a$age_HT_diagnosed_1<-ifelse(bd$f.2966.1.0 %in% c(-1,-3),NA,bd$f.2966.1.0)
-a$age_HT_diagnosed_2<-ifelse(bd$f.2966.2.0 %in% c(-1,-3),NA,bd$f.2966.2.0)
-a$age_HT_diagnosed_3<-ifelse(bd$f.2966.3.0 %in% c(-1,-3),NA,bd$f.2966.3.0)
+a$age_HT_diagnosed_0<-ifelse(mydata$f.2966.0.0 %in% c(-1,-3),NA,mydata$f.2966.0.0)
+a$age_HT_diagnosed_1<-ifelse(mydata$f.2966.1.0 %in% c(-1,-3),NA,mydata$f.2966.1.0)
+a$age_HT_diagnosed_2<-ifelse(mydata$f.2966.2.0 %in% c(-1,-3),NA,mydata$f.2966.2.0)
+a$age_HT_diagnosed_3<-ifelse(mydata$f.2966.3.0 %in% c(-1,-3),NA,mydata$f.2966.3.0)
 
 #Cognitive function tests (baseline/f.u)------------------------------------------------------------------
 # data-coding 498 : 0	Completed / 1	Abandoned / 2	Completed with pause
 
+Cog<-data.table()
 #Fluid intelligence / reasoning
 # baseline
 # 20016	Fluid intelligence score
@@ -439,8 +448,26 @@ a$age_HT_diagnosed_3<-ifelse(bd$f.2966.3.0 %in% c(-1,-3),NA,bd$f.2966.3.0)
 # 20135	When fluid intelligence test completed
 # 20191	Fluid intelligence score
 # 20192	Number of fluid intelligence questions attempted within time limit
-names(bd)[grep("20016|20128|20242|20135|20191|20192",names(bd))]
+names(mydata)[grep("20016|20128|20242|20135|20191|20192",names(mydata))]
 
+# Cog 변수를 out에도 넣고 varlist에서 넣기
+# factor_var에 넣어야될 것은 넣기
+
+Cog$FI_score_0<-mydata$f.20016.0.0
+Cog$FI_score_1<-mydata$f.20016.1.0
+Cog$FI_score_2<-mydata$f.20016.2.0
+Cog$FI_score_3<-mydata$f.20016.3.0
+
+Cog$FI_qcount_0<-mydata$f.20128.0.0
+Cog$FI_qcount_1<-mydata$f.20128.1.0
+Cog$FI_qcount_2<-mydata$f.20128.2.0
+Cog$FI_qcount_3<-mydata$f.20128.3.0
+
+# 0	Completed / 1	Abandoned / 2	Completed with pause
+Cog$FI_fu<-mydata$f.20242.0.0
+Cog$FI_fu_day<-as.IDate(mydata$f.20135.0.0)-as.IDate(a[["visit_date_0"]])
+Cog$FI_fu_score<-mydata$f.20191.0.0
+Cog$FI_fu_qcount<-mydata$f.20192.0.0
 
 #Trail making
 # baseline
@@ -455,7 +482,27 @@ names(bd)[grep("20016|20128|20242|20135|20191|20192",names(bd))]
 # 20157	Duration to complete alphanumeric path (trail #2)
 # 20247	Total errors traversing numeric path (trail #1)
 # 20248	Total errors traversing alphanumeric path (trail #2)
-names(bd)[grep("6348|6350|6349|6351|20246|20136|20156|20157|20247|20248",names(bd))]
+names(mydata)[grep("6348|6350|6349|6351|20246|20136|20156|20157|20247|20248",names(mydata))]
+
+Cog$TM_num_dur_2<-mydata$f.6348.2.0
+Cog$TM_num_dur_3<-mydata$f.6348.3.0
+
+Cog$TM_alpha_dur_2<-mydata$f.6350.2.0
+Cog$TM_alpha_dur_3<-mydata$f.6350.3.0
+
+Cog$TM_num_err_2<-mydata$f.6349.2.0
+Cog$TM_num_err_3<-mydata$f.6349.3.0
+
+Cog$TM_alpha_err_2<-mydata$f.6351.2.0
+Cog$TM_alpha_err_3<-mydata$f.6351.3.0
+
+# 0	Completed / 1	Abandoned / 2	Completed with pause / 3	Timed-out due to inactivity
+Cog$TM_fu<-mydata$f.20246.0.0
+Cog$TM_fu_day<-as.IDate(mydata$f.20136.0.0)-as.IDate(a[["visit_date_0"]])
+Cog$TM_fu_num_dur<-mydata$f.20156.0.0
+Cog$TM_fu_alpha_dur<-mydata$f.20157.0.0
+Cog$TM_fu_num_err<-mydata$f.20247.0.0
+Cog$TM_fu_alpha_err<-mydata$f.20248.0.0
 
 #Symbol digit substitution
 # baseline
@@ -466,7 +513,7 @@ names(bd)[grep("6348|6350|6349|6351|20246|20136|20156|20157|20247|20248",names(b
 # 20137	When symbol digit substitution test completed
 # 20159	Number of symbol digit matches made correctly
 # 20195	Number of symbol digit matches attempted
-names(bd)[grep("22323|22324|20245|20137|20159|20195",names(bd))]
+# names(mydata)[grep("22323|22324|20245|20137|20159|20195",names(mydata))]
 
 #Pairs matching
 # baseline
@@ -479,7 +526,47 @@ names(bd)[grep("22323|22324|20245|20137|20159|20195",names(bd))]
 # 20131	Number of correct matches in round
 # 20132	Number of incorrect matches in round
 # 20133	Time to complete round
-names(bd)[grep("f.398.0.|f.399.0.|f.400.0.|20244|20134|20131|20132|20133",names(bd))]
+names(mydata)[grep("f.398.0.|f.399.0.|f.400.0.|20244|20134|20131|20132|20133",names(mydata))]
+
+
+myCol<-colnames(mydata)[grep("f.398.0.",colnames(mydata))]
+Cog$PM_corr_0<-mydata[,..myCol][,rowMeans(.SD,na.rm=T),]
+myCol<-colnames(mydata)[grep("f.398.1.",colnames(mydata))]
+Cog$PM_corr_1<-mydata[,..myCol][,rowMeans(.SD,na.rm=T),]
+myCol<-colnames(mydata)[grep("f.398.2.",colnames(mydata))]
+Cog$PM_corr_2<-mydata[,..myCol][,rowMeans(.SD,na.rm=T),]
+myCol<-colnames(mydata)[grep("f.398.3.",colnames(mydata))]
+Cog$PM_corr_3<-mydata[,..myCol][,rowMeans(.SD,na.rm=T),]
+
+
+myCol<-colnames(mydata)[grep("f.399.0.",colnames(mydata))]
+Cog$PM_err_0<-mydata[,..myCol][,rowMeans(.SD,na.rm=T),]
+myCol<-colnames(mydata)[grep("f.399.1.",colnames(mydata))]
+Cog$PM_err_1<-mydata[,..myCol][,rowMeans(.SD,na.rm=T),]
+myCol<-colnames(mydata)[grep("f.399.2.",colnames(mydata))]
+Cog$PM_err_2<-mydata[,..myCol][,rowMeans(.SD,na.rm=T),]
+myCol<-colnames(mydata)[grep("f.399.3.",colnames(mydata))]
+Cog$PM_err_3<-mydata[,..myCol][,rowMeans(.SD,na.rm=T),]
+
+myCol<-c("f.400.0.1","f.400.0.2","f.400.0.3")
+Cog$PM_time_0<-mydata[,..myCol][,rowMeans(.SD,na.rm=T),]
+myCol<-c("f.400.1.1","f.400.1.2","f.400.1.3")
+Cog$PM_time_1<-mydata[,..myCol][,rowMeans(.SD,na.rm=T),]
+myCol<-c("f.400.2.1","f.400.2.2","f.400.2.3")
+Cog$PM_time_2<-mydata[,..myCol][,rowMeans(.SD,na.rm=T),]
+myCol<-c("f.400.3.1","f.400.3.2","f.400.3.3")
+Cog$PM_time_3<-mydata[,..myCol][,rowMeans(.SD,na.rm=T),]
+
+# 0	Completed / 1	Abandoned / 2	Completed with pause
+Cog$PM_fu<-mydata$f.20244.0.0
+Cog$PM_fu_day<-as.IDate(mydata$f.20134.0.0)-as.IDate(a[["visit_date_0"]])
+
+myCol<-colnames(mydata)[grep("f.20131.0.",colnames(mydata))]
+Cog$PM_fu_corr<-mydata[,..myCol][,rowMeans(.SD,na.rm=T),]
+myCol<-colnames(mydata)[grep("f.20132.0.",colnames(mydata))]
+Cog$PM_fu_err<-mydata[,..myCol][,rowMeans(.SD,na.rm=T),]
+myCol<-colnames(mydata)[grep("f.20133.0.",colnames(mydata))]
+Cog$PM_fu_time<-mydata[,..myCol][,lapply(.SD,function(x){ifelse(x==-1,NA,x)}),.SD][,rowMeans(.SD,na.rm=T),]
 
 #Numeric memory
 # baseline
@@ -487,17 +574,19 @@ names(bd)[grep("f.398.0.|f.399.0.|f.400.0.|20244|20134|20131|20132|20133",names(
 # fu
 # 20138	When numeric memory test completed
 # 20240	Maximum digits remembered correctly
-names(bd)[grep("4282,20138,20240",names(bd))]
+# names(mydata)[grep("4282,20138,20240",names(mydata))]
 
 #Brain MRI------------------------------------------------------------------
 
-# 107 Diffusion brain MRI
+# Diffusion brain MRI
 # 134 dMRI skeleton	432
 # 135 dMRI weighted means	243
 
-# 110 T1 structural brain MRI	26
+# T1 structural brain MRI	26
 # 1101 Regional grey matter volumes (FAST)	139
 # 1102 Subcortical volumes (FIRST)	14
+
+# T1 structural brain MRI
 # 190 Freesurfer ASEG	99
 # 195 Freesurfer BA exvivo	84
 # 197 Freesurfer a2009s	444
@@ -515,13 +604,13 @@ categorynames<-c("dMRI_skeleton","dMRI_weighted_means",
 mrivars <- excel_sheets("brain mri variables.xlsx") %>% 
   lapply(function(x){read_excel("brain mri variables.xlsx",sheet=x)})
 
-#5:12 데이터 누락있음. 원래는 1:12까지 all.
-for(i in 1:4){
+#5:12 데이터 누락. 원래는 1:12까지 all. -> 2022 데이터로 해결
+for(i in 1:12){
   for(j in 2:3){
     mri_set_fieldcodes<-paste0("f.",mrivars[[i]]$Field_ID,".",j,".0")
     mri_set_colnames<-paste0(categorynames[i],"_",mrivars[[i]]$Description,"_",j)
     
-    mri_set<-sapply(mri_set_fieldcodes,function(v){bd[[v]]})
+    mri_set<-sapply(mri_set_fieldcodes,function(v){mydata[[v]]})
     mri_set<-as.data.table(mri_set)
     colnames(mri_set)<-mri_set_colnames
     
@@ -540,78 +629,129 @@ for(i in 1:4){
   }
 }
 
+#Medications------------------------------------------------------------------
+
+myCol<-colnames(mydata)[grep("f.20003.0.",colnames(mydata))]
+a$medication_0<-mydata[,..myCol][, do.call(paste, c(.SD, sep = "_")),]
+a$medication_0<-lapply(a$medication_0,function(x){gsub("_NA","",x)}) %>% unlist
+
+myCol<-colnames(mydata)[grep("f.20003.1.",colnames(mydata))]
+a$medication_1<-mydata[,..myCol][, do.call(paste, c(.SD, sep = "_")),]
+a$medication_1<-lapply(a$medication_1,function(x){gsub("_NA","",x)}) %>% unlist
+
+myCol<-colnames(mydata)[grep("f.20003.2.",colnames(mydata))]
+a$medication_2<-mydata[,..myCol][, do.call(paste, c(.SD, sep = "_")),]
+a$medication_2<-lapply(a$medication_2,function(x){gsub("_NA","",x)}) %>% unlist
+
+myCol<-colnames(mydata)[grep("f.20003.3.",colnames(mydata))]
+a$medication_3<-mydata[,..myCol][, do.call(paste, c(.SD, sep = "_")),]
+a$medication_3<-lapply(a$medication_3,function(x){gsub("_NA","",x)}) %>% unlist
+
+#Statin
+#Antiplatelet
+
+codelist<-list()
+codelist$LIPID_MODIFYING_AGENTS<-c(1140861936,1140909780,1140861924,1140861926,1140861928,1140862026,1140861954,
+                               1141162544,1141172214,1141146138,1141146234,1140888594,1140861970,1140888648,
+                               1141192410,1141192414,1140861958,1140881748,1141188146,1140861868,1140910670,
+                               1141188546,1141192736,1141192740)
+codelist$HMG_CoA_reductase_inhibitors<-c(1141146138,1141146234,1140888594,1140861970,1140888648,
+                                    1141192410,1141192414,1140861958,1140881748,1141188146)
+codelist$atorvastatin<-c(1141146138,1141146234)
+codelist$fluvastatin<-c(1140888594)
+codelist$pravastatin<-c(1140861970,1140888648)
+codelist$rosuvastatin<-c(1141192410,1141192414)
+codelist$simvastatin<-c(1140861958,1140881748,1141188146)
+
+codelist$ANTITHROMBOTIC_AGENTS<-c(1140861594,1140861806,1140868226,1140911754,1141167844,1141167848,1141177826,1141188516,
+                                  1141181150,1141168318,1141168322,1140861778,1140861780,1141167844,1141167848,1140888266,1140910832)
+codelist$Platelet_aggregation_inhibitors_excl.heparin<-c(1140861806,1140868226,1140911754,1141167844,1141167848,1141177826,1141188516,
+                                                        1141181150,1141168318,1141168322,1140861778,1140861780,1141167844,1141167848)
+codelist$acetylsalicylic_acid<-c(1140861806,1140868226,1140911754,1141167844,1141167848,1141177826,1141188516)
+codelist$cilostazol<-c(1141181150)
+codelist$clopidogrel<-c(1141168318,1141168322)
+codelist$dipyridamole<-c(1140861778,1140861780,1141167844,1141167848)
+
+for(i in 1:length(codelist)){
+  a[[paste0(names(codelist)[i],"_0")]]<-grepl(paste(unlist(codelist[i]),collapse="|"),a$medication_0) %>% as.integer
+  a[[paste0(names(codelist)[i],"_1")]]<-grepl(paste(unlist(codelist[i]),collapse="|"),a$medication_1) %>% as.integer
+  a[[paste0(names(codelist)[i],"_2")]]<-grepl(paste(unlist(codelist[i]),collapse="|"),a$medication_2) %>% as.integer
+  a[[paste0(names(codelist)[i],"_3")]]<-grepl(paste(unlist(codelist[i]),collapse="|"),a$medication_3) %>% as.integer
+}
+
+medication_vars<-a[,.SD,.SDcols=c((ncol(a)-length(codelist)*4+1):ncol(a))] %>% colnames
 
 #Outcomes------------------------------------------------------------------
 #Health related outcomes - Algorithmically defined outcomes
 
 #dementia
-a$dementia_all_outcome<-ifelse(is.na(bd$f.42018.0.0),0,1) #all cause dementia
-a$dementia_all_outcome_date<-bd$f.42018.0.0
+a$dementia_all_outcome<-ifelse(is.na(mydata$f.42018.0.0),0,1) #all cause dementia
+a$dementia_all_outcome_date<-mydata$f.42018.0.0
 
-a$dementia_alzheimer_outcome<-ifelse(is.na(bd$f.42020.0.0),0,1)
-a$dementia_alzheimer_outcome_date<-bd$f.42020.0.0
+a$dementia_alzheimer_outcome<-ifelse(is.na(mydata$f.42020.0.0),0,1)
+a$dementia_alzheimer_outcome_date<-mydata$f.42020.0.0
 
-a$dementia_vascular_outcome<-ifelse(is.na(bd$f.42022.0.0),0,1)
-a$dementia_vascular_outcome_date<-bd$f.42022.0.0
+a$dementia_vascular_outcome<-ifelse(is.na(mydata$f.42022.0.0),0,1)
+a$dementia_vascular_outcome_date<-mydata$f.42022.0.0
 
-a$dementia_frontotemporal_outcome<-ifelse(is.na(bd$f.42024.0.0),0,1)
-a$dementia_frontotemporal_outcome_date<-bd$f.42024.0.0
+a$dementia_frontotemporal_outcome<-ifelse(is.na(mydata$f.42024.0.0),0,1)
+a$dementia_frontotemporal_outcome_date<-mydata$f.42024.0.0
 
 #parkinson
-a$parkinson_PD_outcome<-ifelse(is.na(bd$f.42032.0.0),0,1)
-a$parkinson_PD_outcome_date<-bd$f.42032.0.0
+a$parkinson_PD_outcome<-ifelse(is.na(mydata$f.42032.0.0),0,1)
+a$parkinson_PD_outcome_date<-mydata$f.42032.0.0
 
-a$parkinson_parkinsonism_outcome<-ifelse(is.na(bd$f.42030.0.0),0,1)
-a$parkinson_parkinsonism_outcome_date<-bd$f.42030.0.0
+a$parkinson_parkinsonism_outcome<-ifelse(is.na(mydata$f.42030.0.0),0,1)
+a$parkinson_parkinsonism_outcome_date<-mydata$f.42030.0.0
 
-a$parkinson_progressive_supranuclear_palsy_outcome<-ifelse(is.na(bd$f.42034.0.0),0,1)
-a$parkinson_progressive_supranuclear_palsy_outcome_date<-bd$f.42034.0.0
+a$parkinson_progressive_supranuclear_palsy_outcome<-ifelse(is.na(mydata$f.42034.0.0),0,1)
+a$parkinson_progressive_supranuclear_palsy_outcome_date<-mydata$f.42034.0.0
 
-a$parkinson_multiple_system_atrophy_outcome<-ifelse(is.na(bd$f.42036.0.0),0,1)
-a$parkinson_multiple_system_atrophy_outcome_date<-bd$f.42036.0.0
+a$parkinson_multiple_system_atrophy_outcome<-ifelse(is.na(mydata$f.42036.0.0),0,1)
+a$parkinson_multiple_system_atrophy_outcome_date<-mydata$f.42036.0.0
 
 #asthma
-a$asthma_outcome<-ifelse(is.na(bd$f.42014.0.0),0,1)
-a$asthma_outcome_date<-bd$f.42014.0.0
+a$asthma_outcome<-ifelse(is.na(mydata$f.42014.0.0),0,1)
+a$asthma_outcome_date<-mydata$f.42014.0.0
 
 #COPD
-a$COPD_outcome<-ifelse(is.na(bd$f.42016.0.0),0,1)
-a$COPD_outcome_date<-bd$f.42016.0.0
+a$COPD_outcome<-ifelse(is.na(mydata$f.42016.0.0),0,1)
+a$COPD_outcome_date<-mydata$f.42016.0.0
 
 #endstage renal
-a$endstage_renal_disease_outcome<-ifelse(is.na(bd$f.42026.0.0),0,1)
-a$endstage_renal_disease_outcome_date<-bd$f.42026.0.0
+a$endstage_renal_disease_outcome<-ifelse(is.na(mydata$f.42026.0.0),0,1)
+a$endstage_renal_disease_outcome_date<-mydata$f.42026.0.0
 
 #motor neuron
-a$motor_neuron_disease_outcome<-ifelse(is.na(bd$f.42028.0.0),0,1)
-a$motor_neuron_disease_outcome_date<-bd$f.42028.0.0  
+a$motor_neuron_disease_outcome<-ifelse(is.na(mydata$f.42028.0.0),0,1)
+a$motor_neuron_disease_outcome_date<-mydata$f.42028.0.0  
 
 #MI
-a$MI_all_outcome<-ifelse(is.na(bd$f.42000.0.0),0,1)
-a$MI_all_outcome_date<-bd$f.42000.0.0
+a$MI_all_outcome<-ifelse(is.na(mydata$f.42000.0.0),0,1)
+a$MI_all_outcome_date<-mydata$f.42000.0.0
 
-a$MI_STEMI_outcome<-ifelse(is.na(bd$f.42002.0.0),0,1)
-a$MI_STEMI_outcome_date<-bd$f.42002.0.0
+a$MI_STEMI_outcome<-ifelse(is.na(mydata$f.42002.0.0),0,1)
+a$MI_STEMI_outcome_date<-mydata$f.42002.0.0
 
-a$MI_NSTEMI_outcome<-ifelse(is.na(bd$f.42004.0.0),0,1)
-a$MI_NSTEMI_outcome_date<-bd$f.42004.0.0
+a$MI_NSTEMI_outcome<-ifelse(is.na(mydata$f.42004.0.0),0,1)
+a$MI_NSTEMI_outcome_date<-mydata$f.42004.0.0
 
 #stroke
-a$stroke_all_outcome<-ifelse(is.na(bd$f.42006.0.0),0,1)
-a$stroke_all_outcome_date<-bd$f.42006.0.0
+a$stroke_all_outcome<-ifelse(is.na(mydata$f.42006.0.0),0,1)
+a$stroke_all_outcome_date<-mydata$f.42006.0.0
 
-a$stroke_ischaemic_outcome<-ifelse(is.na(bd$f.42008.0.0),0,1)
-a$stroke_ischaemic_outcome_date<-bd$f.42008.0.0
+a$stroke_ischaemic_outcome<-ifelse(is.na(mydata$f.42008.0.0),0,1)
+a$stroke_ischaemic_outcome_date<-mydata$f.42008.0.0
 
-a$stroke_intracerebral_haemorrhage_outcome<-ifelse(is.na(bd$f.42010.0.0),0,1)
-a$stroke_intracerebral_haemorrhage_outcome_date<-bd$f.42010.0.0
+a$stroke_intracerebral_haemorrhage_outcome<-ifelse(is.na(mydata$f.42010.0.0),0,1)
+a$stroke_intracerebral_haemorrhage_outcome_date<-mydata$f.42010.0.0
 
-a$stroke_subarachnoid_haemorrhage_outcome<-ifelse(is.na(bd$f.42013.0.0),0,1)
-a$stroke_subarachnoid_haemorrhage_outcome_date<-bd$f.42013.0.0
+a$stroke_subarachnoid_haemorrhage_outcome<-ifelse(is.na(mydata$f.42013.0.0),0,1)
+a$stroke_subarachnoid_haemorrhage_outcome_date<-mydata$f.42013.0.0
 
 #Death
 
-a$death_date<-bd$f.40000.0.0
+a$death_date<-mydata$f.40000.0.0
 a$death<-ifelse(!is.na(a$death_date),1,0)
 
 #date->day conversion
@@ -647,7 +787,10 @@ varlist <- list(
            "cholesterol_medication_1","BP_medication_1","insulin_medication_1",
            "cholesterol_medication_2","BP_medication_2","insulin_medication_2",
            "cholesterol_medication_3","BP_medication_3","insulin_medication_3",
-           "DM_0","DM_1","DM_2","DM_3", paste0("IGF1_", 0:1), paste0("SHBG_", 0:1),
+           "DM_0","DM_1","DM_2","DM_3",
+           paste0("fasting_time_", 0:3),
+           paste0("insulin_within_1y_diagnosed_DM_", 0:3),
+           paste0("IGF1_", 0:1), paste0("SHBG_", 0:1),
            "angina_self_0","angina_self_1","angina_self_2","angina_self_3",
            "heartattack_or_MI_self_0","heartattack_or_MI_self_1","heartattack_or_MI_self_2","heartattack_or_MI_self_3",
            "ischaemicstroke_self_0","ischaemicstroke_self_1","ischaemicstroke_self_2","ischaemicstroke_self_3",
@@ -668,17 +811,14 @@ varlist <- list(
            paste0("education_other_professional_",0:3),
            paste0("education_school_never_",0:2),
            paste0("education_age_completed_full_time_education_",0:2),
-           "ethnicity_group","MET_activity"
-  ),
-  MRI = grep(pattern='dMRI_|T1_', x=names(a), value = T)
+           "ethnicity","ethnicity_group","MET_activity"
+           ),
+  MRI = grep(pattern='dMRI_|T1_', x=names(a), value = T),
+  Medication = medication_vars,
+  Cognition = colnames(Cog)
 )
 
-out <- cbind(a, days)[, .SD, .SDcols = unlist(varlist)]
-
-## year
-for (v in colnames(days)){
-  out[[v]] <- out[[v]]/365
-}
+out <- cbind(a, days, Cog)[, .SD, .SDcols = unlist(varlist)]
 
 factor_vars<-c("sex", "smoking_status_0","smoking_status_1","smoking_status_2","smoking_status_3",
                "alcohol_status_0","alcohol_status_1","alcohol_status_2","alcohol_status_3",
@@ -690,6 +830,7 @@ factor_vars<-c("sex", "smoking_status_0","smoking_status_1","smoking_status_2","
                "cholesterol_medication_2","BP_medication_2","insulin_medication_2",
                "cholesterol_medication_3","BP_medication_3","insulin_medication_3",
                "DM_0","DM_1","DM_2","DM_3",
+               paste0("insulin_within_1y_diagnosed_DM_", 0:3),
                "MetS_NCEPATPIII_0","MetS_NCEPATPIII_1","MetS_IDF_0","MetS_IDF_1",
                "angina_self_0","angina_self_1","angina_self_2","angina_self_3",
                "heartattack_or_MI_self_0","heartattack_or_MI_self_1","heartattack_or_MI_self_2","heartattack_or_MI_self_3",
@@ -708,15 +849,31 @@ factor_vars<-c("sex", "smoking_status_0","smoking_status_1","smoking_status_2","
                paste0("education_NVQ_HND_HNC_",0:3),
                paste0("education_other_professional_",0:3),
                paste0("education_school_never_",0:2),
-               events,"ethnicity_group",
-               "MetS_NCEPATPIII_count_0","MetS_NCEPATPIII_count_1","MetS_IDF_count_0","MetS_IDF_count_1")
+               events,"ethnicity","ethnicity_group",
+               "MetS_NCEPATPIII_count_0","MetS_NCEPATPIII_count_1","MetS_IDF_count_0","MetS_IDF_count_1",
+               medication_vars,
+               "FI_fu","TM_fu","PM_fu")
 out[,(factor_vars):=lapply(.SD,as.factor),.SDcols=factor_vars]
 
 out.label <- jstable::mk.lev(out)
-out.label[variable == "ethnicity_group", `:=`(val_label = c("White", "Mixed", "Asian or Asian British", "Black or Black British", 
-                                                            "Chinese", "Other", "Do not know", "Prefer not to answer"))]
 
 # label.main[variable == " ", `:=`(var_label = " ", val_label = c("","",""))]
 
-#saveRDS(list(data = out, label = out.label), "data.RDS")
-#fst::write_fst(out, "data.fst");saveRDS(list(factor_vars = factor_vars, label= out.label, varlist = varlist), "info.RDS")
+saveRDS(list(data = out, label = out.label), "data.RDS")
+fst::write_fst(out, "data.fst");saveRDS(list(factor_vars = factor_vars, label= out.label, varlist = varlist), "info.RDS")
+
+
+# mridt<-data.table()
+# mridt$vn<-MRI
+# mridt[,ct:=as.factor(ifelse(grepl("dMRI_skeleton",vn),134,
+#                   ifelse(grepl("dMRI_weighted_means",vn),135,
+#                          ifelse(grepl("T1_Regional_grey_matter_volumes_FAST",vn),1101,
+#                                 ifelse(grepl("T1_Subcortical_volumes_FIRST",vn),1102,
+#                                        ifelse(grepl("T1_Freesurfer_ASEG",vn),190,
+#                                               ifelse(grepl("T1_Freesurfer_BA_exvivo",vn),195,
+#                                                      ifelse(grepl("T1_Freesurfer_a2009s",vn),197,
+#                                                             ifelse(grepl("T1_Freesurfer_DKT",vn),196,
+#                                                                    ifelse(grepl("T1_Freesurfer_desikan_gw",vn),194,
+#                                                                           ifelse(grepl("T1_Freesurfer_desikan_pial",vn),193,
+#                                                                                        ifelse(grepl("T1_Freesurfer_desikan_white",vn),192,191))))))))))))]
+# fwrite(mridt,"mridt.csv")
