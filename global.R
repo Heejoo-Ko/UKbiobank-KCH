@@ -1004,7 +1004,10 @@ vn<-c("IPAQ_activity_group",
       "GPT_0","GPT_1","albumin_0","albumin_1","ALP_0","ALP_1","ApoA_0","ApoA_1","ApoB_0","ApoB_1","AST_0","AST_1","CRP_0","CRP_1","Ca_0","Ca_1","cholesterol_0","cholesterol_1",
       "creatinine_0","creatinine_1","CysC_0","CysC_1","Dbil_0","Dbil_1","GGT_0","GGT_1","LDL_0","LDL_1","lipoproteinA_0","lipoproteinA_1","estradiol_0","estradiol_1",
       "phosphate_0","phosphate_1","RF_0","RF_1","testosterone_0","testosterone_1","Tbil_0","Tbil_1","tot_protein_0","tot_protein_1","urate_0","urate_1","urea_0","urea_1",
-      "vitD_0","vitD_1","glucose_0","glucose_1","HbA1c_0","HbA1c_1","TG_0","TG_1","HDL_0","HDL_1","IGF1_0","IGF1_1","SHBG_0","SHBG_1","MET_activity")
+      "vitD_0","vitD_1","glucose_0","glucose_1","HbA1c_0","HbA1c_1","TG_0","TG_1","HDL_0","HDL_1","IGF1_0","IGF1_1","SHBG_0","SHBG_1","MET_activity",
+      "MetS_WHO_0","MetS_WHO_count_0","MetS_WHO_1","MetS_WHO_count_1",
+      "MetS_NCEPATPIII_0","MetS_NCEPATPIII_1","MetS_NCEPATPIII_count_0", "MetS_NCEPATPIII_count_1",
+      "MetS_IDF_0","MetS_IDF_1","MetS_IDF_count_0", "MetS_IDF_count_1")
 
 vout<-cbind(out[,.SD,.SDcols=vn])
 vout$ID<-a$ID
