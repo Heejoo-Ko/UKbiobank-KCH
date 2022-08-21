@@ -1,5 +1,6 @@
 library(data.table);library(magrittr);library(parallel);library(fst);library(stats);library(imputeTS);library(readxl)
 
+setwd("/home/heejooko/ShinyApps/UKbiobank")
 # setwd("/home/js/UKbiobank/UKbiobank2022")
 # list.files(path=".", pattern=NULL, all.files=FALSE, full.names=FALSE)
 
@@ -61,7 +62,9 @@ a$ethnicity_group<-a$ethnicity %% 1000
 
 #Summed MET minutes per week for all activity 22040 없어서 walking, moderate, vigorous 더해서 구함
 #[minutes/week]
-a$MET_activity<-mydata$f.22037.0.0+mydata$f.22038.0.0+mydata$f.22039.0.0
+
+# a$MET_activity<-mydata$f.22037.0.0+mydata$f.22038.0.0+mydata$f.22039.0.0
+a$MET_activity<-mydata$f.22040.0.0
 
 #Smoking
 # -3->9	Prefer not to answer / 0	Never / 1	Previous / 2	Current
@@ -205,7 +208,7 @@ a$diaBP_1<-ifelse(is.na(a$diaBP_manual_1),a$diaBP_automated_1,a$diaBP_manual_1)
 a$diaBP_2<-ifelse(is.na(a$diaBP_manual_2),a$diaBP_automated_2,a$diaBP_manual_2)
 a$diaBP_3<-ifelse(is.na(a$diaBP_manual_3),a$diaBP_automated_3,a$diaBP_manual_3)
 
-#Amydataominal obesity
+#Abdominal obesity
 #[cm]
 a$WC_0<-mydata$f.48.0.0
 a$WC_1<-mydata$f.48.1.0
@@ -252,37 +255,58 @@ a$DM_1<-ifelse(a$DM_diagnosed_1==1 | a$insulin_medication_1==1,1,0)
 a$DM_2<-ifelse(a$DM_diagnosed_2==1 | a$insulin_medication_2==1,1,0)
 a$DM_3<-ifelse(a$DM_diagnosed_3==1 | a$insulin_medication_3==1,1,0)
 
-a$MetS_NCEPATPIII_count_0<-as.integer(a$DM_0)+
+a$MetS_NCEPATPIII_count_0<-as.integer(a$DM_0 | (a$fasting_time_0>=8 & a$glucose_0>=6.1))+
   as.integer(a$sysBP_0>=130 | a$diaBP_0>=85 | a$BP_medication_0==1)+
   as.integer((a$sex=="F" & a$WC_0>=88) | (a$sex=="M" & a$WC_0>=102))+
   as.integer(a$TG_0>=1.7 & ((a$sex=="M" & a$HDL_0<1.03) | (a$sex=="F" & a$HDL_0<1.29)))
-a$MetS_NCEPATPIII_count_1<-as.integer(a$DM_1)+
+a$MetS_NCEPATPIII_count_1<-as.integer(a$DM_1 | (a$fasting_time_1>=8 & a$glucose_1>=6.1))+
   as.integer(a$sysBP_1>=130 | a$diaBP_1>=85 | a$BP_medication_1==1)+
   as.integer((a$sex=="F" & a$WC_1>=88) | (a$sex=="M" & a$WC_1>=102))+
   as.integer(a$TG_1>=1.7 & ((a$sex=="M" & a$HDL_1<1.03) | (a$sex=="F" & a$HDL_1<1.29)))
 a$MetS_NCEPATPIII_0<-ifelse(a$MetS_NCEPATPIII_count_0>=3,1,0)
 a$MetS_NCEPATPIII_1<-ifelse(a$MetS_NCEPATPIII_count_1>=3,1,0)
 
-a$MetS_IDF_count_0<-as.integer(a$DM_0)+
+a$MetS_IDF_count_0<-as.integer(a$DM_0 | (a$fasting_time_0>=8 & a$glucose_0>=5.6))+
   as.integer(a$sysBP_0>=130 | a$diaBP_0>=85 | a$BP_medication_0==1)+
   as.integer((a$sex=="F" & a$WC_0>=80) | (a$sex=="M" & a$WC_0>=94))+
   as.integer((a$TG_0>=1.7 & ((a$sex=="M" & a$HDL_0<1.03) | (a$sex=="F" & a$HDL_0<1.29))) | (a$cholesterol_medication_0==1))
-a$MetS_IDF_count_1<-as.integer(a$DM_1)+
+a$MetS_IDF_count_1<-as.integer(a$DM_1 | (a$fasting_time_1>=8 & a$glucose_1>=5.6))+
   as.integer(a$sysBP_1>=130 | a$diaBP_1>=85 | a$BP_medication_1==1)+
   as.integer((a$sex=="F" & a$WC_1>=80) | (a$sex=="M" & a$WC_1>=94))+
   as.integer((a$TG_1>=1.7 & ((a$sex=="M" & a$HDL_1<1.03) | (a$sex=="F" & a$HDL_1<1.29))) | (a$cholesterol_medication_1==1))
 
 criteria_c<-((a$sex=="F" & a$WC_0>=80) | (a$sex=="M" & a$WC_0>=94))
-criteria_count_amydata<-as.integer(a$DM_0)+
+criteria_count_abd<-as.integer(a$DM_0 | (a$fasting_time_0>=8 & a$glucose_0>=5.6))+
   as.integer(a$sysBP_0>=130 | a$diaBP_0>=85 | a$BP_medication_0==1)+
   as.integer((a$TG_0>=1.7 & ((a$sex=="M" & a$HDL_0<1.03) | (a$sex=="F" & a$HDL_0<1.29))) | (a$cholesterol_medication_0==1))
-a$MetS_IDF_0<-ifelse(is.na(criteria_c) | is.na(criteria_count_amydata),NA,ifelse(criteria_c & criteria_count_amydata>=2,1,0))
+a$MetS_IDF_0<-ifelse(is.na(criteria_c) | is.na(criteria_count_abd),NA,ifelse(criteria_c & criteria_count_abd>=2,1,0))
 
 criteria_c<-((a$sex=="F" & a$WC_1>=80) | (a$sex=="M" & a$WC_1>=94))
-criteria_count_amydata<-as.integer(a$DM_1)+
+criteria_count_abd<-as.integer(a$DM_1 | (a$fasting_time_1>=8 & a$glucose_1>=5.6))+
   as.integer(a$sysBP_1>=130 | a$diaBP_1>=85 | a$BP_medication_1==1)+
   as.integer((a$TG_1>=1.7 & ((a$sex=="M" & a$HDL_1<1.03) | (a$sex=="F" & a$HDL_1<1.29))) | (a$cholesterol_medication_1==1))
-a$MetS_IDF_1<-ifelse(is.na(criteria_c) | is.na(criteria_count_amydata),NA,ifelse(criteria_c & criteria_count_amydata>=2,1,0))
+a$MetS_IDF_1<-ifelse(is.na(criteria_c) | is.na(criteria_count_abd),NA,ifelse(criteria_c & criteria_count_abd>=2,1,0))
+
+
+a$MetS_WHO_count_0<-as.integer(a$DM_self_0 | (a$fasting_time_0>=8 & a$glucose_0>=6.0))+
+  as.integer(a$sysBP_0>=140 | a$diaBP_0>=90 | a$BP_medication_0==1)+
+  as.integer(a$bmi_0>=30)+
+  as.integer(a$TG_0>=1.7 | a$HDL_0<=1.03)
+criteria_a<-(a$DM_self_0 | (a$fasting_time_0>=8 & a$glucose_0>=6.0))
+criteria_count_bcd<-as.integer(a$sysBP_0>=140 | a$diaBP_0>=90 | a$BP_medication_0==1)+
+  as.integer(a$bmi_0>=30)+
+  as.integer(a$TG_0>=1.7 | a$HDL_0<=1.03)
+a$MetS_WHO_0<-ifelse(is.na(criteria_a) | is.na(criteria_count_bcd),NA,ifelse(criteria_a & criteria_count_bcd>=2,1,0))
+
+a$MetS_WHO_count_1<-as.integer(a$DM_self_1 | (a$fasting_time_1>=8 & a$glucose_1>=6.0))+
+  as.integer(a$sysBP_1>=140 | a$diaBP_1>=90 | a$BP_medication_1==1)+
+  as.integer(a$bmi_1>=30)+
+  as.integer(a$TG_1>=1.7 | a$HDL_1<=1.03)
+criteria_a<-(a$DM_self_1 | (a$fasting_time_1>=8 & a$glucose_1>=6.0))
+criteria_count_bcd<-as.integer(a$sysBP_1>=140 | a$diaBP_1>=90 | a$BP_medication_1==1)+
+  as.integer(a$bmi_1>=30)+
+  as.integer(a$TG_1>=1.7 | a$HDL_1<=1.03)
+a$MetS_WHO_1<-ifelse(is.na(criteria_a) | is.na(criteria_count_bcd),NA,ifelse(criteria_a & criteria_count_bcd>=2,1,0))
 
 
 # sapply(c("MetS_NCEPATPIII_count_0","MetS_NCEPATPIII_count_1","MetS_IDF_count_0","MetS_IDF_count_1"),
@@ -663,6 +687,8 @@ codelist$pravastatin<-c(1140861970,1140888648)
 codelist$rosuvastatin<-c(1141192410,1141192414)
 codelist$simvastatin<-c(1140861958,1140881748,1141188146)
 
+codelist$non_HMG_CoA_LIPID_MODIFYING_AGENTS<-codelist$LIPID_MODIFYING_AGENTS[!(codelist$LIPID_MODIFYING_AGENTS %in% codelist$HMG_CoA_reductase_inhibitors)]
+
 codelist$ANTITHROMBOTIC_AGENTS<-c(1140861594,1140861806,1140868226,1140911754,1141167844,1141167848,1141177826,1141188516,
                                   1141181150,1141168318,1141168322,1140861778,1140861780,1141167844,1141167848,1140888266,1140910832)
 codelist$Platelet_aggregation_inhibitors_excl.heparin<-c(1140861806,1140868226,1140911754,1141167844,1141167848,1141177826,1141188516,
@@ -672,6 +698,8 @@ codelist$cilostazol<-c(1141181150)
 codelist$clopidogrel<-c(1141168318,1141168322)
 codelist$dipyridamole<-c(1140861778,1140861780,1141167844,1141167848)
 
+codelist$non_clopidogrel_ANTITHROMBOTIC_AGENTS<-codelist$ANTITHROMBOTIC_AGENTS[!(codelist$ANTITHROMBOTIC_AGENTS %in% codelist$clopidogrel)]
+
 for(i in 1:length(codelist)){
   a[[paste0(names(codelist)[i],"_0")]]<-grepl(paste(unlist(codelist[i]),collapse="|"),a$medication_0) %>% as.integer
   a[[paste0(names(codelist)[i],"_1")]]<-grepl(paste(unlist(codelist[i]),collapse="|"),a$medication_1) %>% as.integer
@@ -680,6 +708,21 @@ for(i in 1:length(codelist)){
 }
 
 medication_vars<-a[,.SD,.SDcols=c((ncol(a)-length(codelist)*4+1):ncol(a))] %>% colnames
+
+# for(i in 0:3){
+#   vn<-paste0("non_HMG_CoA_LIPID_MODIFYING_AGENTS_",i)
+#   vn1<-paste0("LIPID_MODIFYING_AGENTS_",i)
+#   vn2<-paste0("HMG_CoA_reductase_inhibitors_",i)
+#   a[[vn]]<-ifelse(a[[vn1]]==1 & a[[vn2]]==0,1,0)
+#   
+#   
+#   vn<-paste0("non_clopidogrel_ANTITHROMBOTIC_AGENTS_",i)
+#   vn1<-paste0("ANTITHROMBOTIC_AGENTS_",i)
+#   vn2<-paste0("clopidogrel_",i)
+#   a[[vn]]<-ifelse(a[[vn1]]==1 & a[[vn2]]==0,1,0)
+# }
+# medication_vars<-c(medication_vars,paste0("non_HMG_CoA_LIPID_MODIFYING_AGENTS_",0:3),paste0("non_clopidogrel_ANTITHROMBOTIC_AGENTS_",0:3))
+
 
 #Outcomes------------------------------------------------------------------
 #Health related outcomes - Algorithmically defined outcomes
@@ -765,11 +808,88 @@ days <- sapply(events,
 colnames(days) <- gsub("_outcome", "_day", events)
 colnames(days)[colnames(days) == "death"] <- "death_day"
 
+#20220821 add vars
+
+a$IPAQ_activity_group<-mydata$f.22032.0.0
+
+a$GPT_0<-mydata$f.30620.0.0
+a$GPT_1<-mydata$f.30620.1.0
+
+a$albumin_0<-mydata$f.30600.0.0
+a$albumin_1<-mydata$f.30600.1.0
+
+a$ALP_0<-mydata$f.30610.0.0
+a$ALP_1<-mydata$f.30610.1.0
+
+a$ApoA_0<-mydata$f.30630.0.0
+a$ApoA_1<-mydata$f.30630.1.0
+
+a$ApoB_0<-mydata$f.30640.0.0
+a$ApoB_1<-mydata$f.30640.1.0
+
+a$AST_0<-mydata$f.30650.0.0
+a$AST_1<-mydata$f.30650.1.0
+
+a$CRP_0<-mydata$f.30710.0.0
+a$CRP_1<-mydata$f.30710.1.0
+
+a$Ca_0<-mydata$f.30680.0.0
+a$Ca_1<-mydata$f.30680.1.0
+
+a$cholesterol_0<-mydata$f.30690.0.0
+a$cholesterol_1<-mydata$f.30690.1.0
+
+a$creatinine_0<-mydata$f.30700.0.0
+a$creatinine_1<-mydata$f.30700.1.0
+
+a$CysC_0<-mydata$f.30720.0.0
+a$CysC_1<-mydata$f.30720.1.0
+
+a$Dbil_0<-mydata$f.30660.0.0
+a$Dbil_1<-mydata$f.30660.1.0
+
+a$GGT_0<-mydata$f.30730.0.0
+a$GGT_1<-mydata$f.30730.1.0
+
+a$LDL_0<-mydata$f.30780.0.0
+a$LDL_1<-mydata$f.30780.1.0
+
+a$lipoproteinA_0<-mydata$f.30790.0.0
+a$lipoproteinA_1<-mydata$f.30790.1.0
+
+a$estradiol_0<-mydata$f.30800.0.0
+a$estradiol_1<-mydata$f.30800.1.0
+
+a$phosphate_0<-mydata$f.30810.0.0
+a$phosphate_1<-mydata$f.30810.1.0
+
+a$RF_0<-mydata$f.30820.0.0
+a$RF_1<-mydata$f.30820.1.0
+
+a$testosterone_0<-mydata$f.30850.0.0
+a$testosterone_1<-mydata$f.30850.1.0
+
+a$Tbil_0<-mydata$f.30840.0.0
+a$Tbil_1<-mydata$f.30840.1.0
+
+a$tot_protein_0<-mydata$f.30860.0.0
+a$tot_protein_1<-mydata$f.30860.1.0
+
+a$urate_0<-mydata$f.30880.0.0
+a$urate_1<-mydata$f.30880.1.0
+
+a$urea_0<-mydata$f.30670.0.0
+a$urea_1<-mydata$f.30670.1.0
+
+a$vitD_0<-mydata$f.30890.0.0
+a$vitD_1<-mydata$f.30890.1.0
 
 #----------------------------------------------------------------------------------
 
 varlist <- list(
-  MetS = c("MetS_NCEPATPIII_0","MetS_NCEPATPIII_1","MetS_IDF_0","MetS_IDF_1", "MetS_NCEPATPIII_count_0", "MetS_NCEPATPIII_count_1", "MetS_IDF_count_0", "MetS_IDF_count_1"),
+  MetS = c("MetS_NCEPATPIII_0","MetS_NCEPATPIII_1","MetS_IDF_0","MetS_IDF_1",
+           "MetS_NCEPATPIII_count_0", "MetS_NCEPATPIII_count_1", "MetS_IDF_count_0", "MetS_IDF_count_1",
+           "MetS_WHO_count_0","MetS_WHO_0","MetS_WHO_count_1","MetS_WHO_1"),
   Event = c(gsub("_day","_outcome",colnames(days)[1:ncol(days)-1]),"death"),
   Time = colnames(days),
   Base = c("age", "sex", "townsend_deprivation_index", paste0("bmi_",0:3),
@@ -811,7 +931,21 @@ varlist <- list(
            paste0("education_other_professional_",0:3),
            paste0("education_school_never_",0:2),
            paste0("education_age_completed_full_time_education_",0:2),
-           "ethnicity","ethnicity_group","MET_activity"
+           "ethnicity","ethnicity_group","MET_activity","IPAQ_activity_group",
+           paste0("non_HMG_CoA_LIPID_MODIFYING_AGENTS_",0:3),
+           paste0("non_clopidogrel_ANTITHROMBOTIC_AGENTS_",0:3),
+           "GPT_0","GPT_1","albumin_0","albumin_1",
+           "ALP_0","ALP_1","ApoA_0","ApoA_1",
+           "ApoB_0","ApoB_1","AST_0","AST_1",
+           "CRP_0","CRP_1","Ca_0","Ca_1",
+           "cholesterol_0","cholesterol_1","creatinine_0","creatinine_1",
+           "CysC_0","CysC_1","Dbil_0","Dbil_1",
+           "GGT_0","GGT_1","LDL_0","LDL_1",
+           "lipoproteinA_0","lipoproteinA_1","estradiol_0","estradiol_1",
+           "phosphate_0","phosphate_1","RF_0","RF_1",
+           "testosterone_0","testosterone_1","Tbil_0","Tbil_1",
+           "tot_protein_0","tot_protein_1","urate_0","urate_1",                                       
+           "urea_0","urea_1","vitD_0","vitD_1"         
            ),
   MRI = grep(pattern='dMRI_|T1_', x=names(a), value = T),
   Medication = medication_vars,
@@ -850,7 +984,8 @@ factor_vars<-c("sex", "smoking_status_0","smoking_status_1","smoking_status_2","
                paste0("education_other_professional_",0:3),
                paste0("education_school_never_",0:2),
                events,"ethnicity","ethnicity_group",
-               "MetS_NCEPATPIII_count_0","MetS_NCEPATPIII_count_1","MetS_IDF_count_0","MetS_IDF_count_1",
+               "MetS_NCEPATPIII_count_0","MetS_NCEPATPIII_count_1","MetS_IDF_count_0","MetS_IDF_count_1","IPAQ_activity_group",
+               "MetS_WHO_count_0","MetS_WHO_0","MetS_WHO_count_1","MetS_WHO_1",
                medication_vars,
                "FI_fu","TM_fu","PM_fu")
 out[,(factor_vars):=lapply(.SD,as.factor),.SDcols=factor_vars]
@@ -859,9 +994,22 @@ out.label <- jstable::mk.lev(out)
 
 # label.main[variable == " ", `:=`(var_label = " ", val_label = c("","",""))]
 
-saveRDS(list(data = out, label = out.label), "data.RDS")
 fst::write_fst(out, "data.fst");saveRDS(list(factor_vars = factor_vars, label= out.label, varlist = varlist), "info.RDS")
 
+a$ID<-as.character(a$ID)
+
+vn<-c("IPAQ_activity_group",
+      "non_HMG_CoA_LIPID_MODIFYING_AGENTS_0","non_clopidogrel_ANTITHROMBOTIC_AGENTS_0","non_HMG_CoA_LIPID_MODIFYING_AGENTS_1","non_clopidogrel_ANTITHROMBOTIC_AGENTS_1",
+      "non_HMG_CoA_LIPID_MODIFYING_AGENTS_2","non_clopidogrel_ANTITHROMBOTIC_AGENTS_2","non_HMG_CoA_LIPID_MODIFYING_AGENTS_3","non_clopidogrel_ANTITHROMBOTIC_AGENTS_3",
+      "GPT_0","GPT_1","albumin_0","albumin_1","ALP_0","ALP_1","ApoA_0","ApoA_1","ApoB_0","ApoB_1","AST_0","AST_1","CRP_0","CRP_1","Ca_0","Ca_1","cholesterol_0","cholesterol_1",
+      "creatinine_0","creatinine_1","CysC_0","CysC_1","Dbil_0","Dbil_1","GGT_0","GGT_1","LDL_0","LDL_1","lipoproteinA_0","lipoproteinA_1","estradiol_0","estradiol_1",
+      "phosphate_0","phosphate_1","RF_0","RF_1","testosterone_0","testosterone_1","Tbil_0","Tbil_1","tot_protein_0","tot_protein_1","urate_0","urate_1","urea_0","urea_1",
+      "vitD_0","vitD_1","glucose_0","glucose_1","HbA1c_0","HbA1c_1","TG_0","TG_1","HDL_0","HDL_1","IGF1_0","IGF1_1","SHBG_0","SHBG_1","MET_activity")
+
+vout<-cbind(out[,.SD,.SDcols=vn])
+vout$ID<-a$ID
+
+write.csv(vout,"variable_request_20220819.csv")
 
 # mridt<-data.table()
 # mridt$vn<-MRI
