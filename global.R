@@ -592,6 +592,7 @@ Cog$PM_fu_err<-mydata[,..myCol][,rowMeans(.SD,na.rm=T),]
 myCol<-colnames(mydata)[grep("f.20133.0.",colnames(mydata))]
 Cog$PM_fu_time<-mydata[,..myCol][,lapply(.SD,function(x){ifelse(x==-1,NA,x)}),.SD][,rowMeans(.SD,na.rm=T),]
 
+Cog$ID<-a$ID
 #Numeric memory
 # baseline
 # 4282	Maximum digits remembered correctly
@@ -808,6 +809,9 @@ days <- sapply(events,
 colnames(days) <- gsub("_outcome", "_day", events)
 colnames(days)[colnames(days) == "death"] <- "death_day"
 
+days<-as.data.table(days)
+days$ID<-a$ID
+
 #20220821 add vars
 
 a$IPAQ_activity_group<-mydata$f.22032.0.0
@@ -886,12 +890,28 @@ a$vitD_1<-mydata$f.30890.1.0
 
 #----------------------------------------------------------------------------------
 
+#20002 Non-cancer illness code, self-reported
+#dementia_all_outcome 1263
+#parkinson_PD_outcome 1262
+#motor_neuron_disease_outcome 1259
+#MI_all_outcome 1075
+#stroke_all_outcome 1081
+
+a_inclusion<-a[!grepl(pattern='1263|1262|1259|1075|1081',x=a$noncancer_illness_self_0),"ID"]
+
+a1<-merge(a_inclusion,a,by="ID")
+a2<-merge(a1,days,by="ID")
+a3<-merge(a2,Cog,by="ID")
+ 
+# quantile(a3$CRP_0,probs = c(0,.25, .33,.5, .67,.75,1),na.rm=T)
+# hist(a3$CRP_0,xlim=c(0,10),breaks=seq(0,100,0.1))
+
 varlist <- list(
   MetS = c("MetS_NCEPATPIII_0","MetS_NCEPATPIII_1","MetS_IDF_0","MetS_IDF_1",
            "MetS_NCEPATPIII_count_0", "MetS_NCEPATPIII_count_1", "MetS_IDF_count_0", "MetS_IDF_count_1",
            "MetS_WHO_count_0","MetS_WHO_0","MetS_WHO_count_1","MetS_WHO_1"),
-  Event = c(gsub("_day","_outcome",colnames(days)[1:ncol(days)-1]),"death"),
-  Time = colnames(days),
+  Event = c(gsub("_day","_outcome",colnames(days)[1:(ncol(days)-2)]),"death"),
+  Time = colnames(days)[!grepl("ID",colnames(days))],
   Base = c("age", "sex", "townsend_deprivation_index", paste0("bmi_",0:3),
            "smoking_status_0","smoking_status_1","smoking_status_2","smoking_status_3",
            "smoking_stop_age",paste0("smoking_packyears_",0:3),
@@ -932,8 +952,6 @@ varlist <- list(
            paste0("education_school_never_",0:2),
            paste0("education_age_completed_full_time_education_",0:2),
            "ethnicity","ethnicity_group","MET_activity","IPAQ_activity_group",
-           paste0("non_HMG_CoA_LIPID_MODIFYING_AGENTS_",0:3),
-           paste0("non_clopidogrel_ANTITHROMBOTIC_AGENTS_",0:3),
            "GPT_0","GPT_1","albumin_0","albumin_1",
            "ALP_0","ALP_1","ApoA_0","ApoA_1",
            "ApoB_0","ApoB_1","AST_0","AST_1",
@@ -949,10 +967,10 @@ varlist <- list(
            ),
   MRI = grep(pattern='dMRI_|T1_', x=names(a), value = T),
   Medication = medication_vars,
-  Cognition = colnames(Cog)
+  Cognition = colnames(Cog)[!grepl("ID",colnames(Cog))]
 )
 
-out <- cbind(a, days, Cog)[, .SD, .SDcols = unlist(varlist)]
+out <- a3[, .SD, .SDcols = unlist(varlist)]
 
 factor_vars<-c("sex", "smoking_status_0","smoking_status_1","smoking_status_2","smoking_status_3",
                "alcohol_status_0","alcohol_status_1","alcohol_status_2","alcohol_status_3",
@@ -996,7 +1014,7 @@ out.label <- jstable::mk.lev(out)
 
 fst::write_fst(out, "data.fst");saveRDS(list(factor_vars = factor_vars, label= out.label, varlist = varlist), "info.RDS")
 
-a$ID<-as.character(a$ID)
+a3$ID<-as.character(a3$ID)
 
 vn<-c("IPAQ_activity_group",
       "non_HMG_CoA_LIPID_MODIFYING_AGENTS_0","non_clopidogrel_ANTITHROMBOTIC_AGENTS_0","non_HMG_CoA_LIPID_MODIFYING_AGENTS_1","non_clopidogrel_ANTITHROMBOTIC_AGENTS_1",
@@ -1010,9 +1028,9 @@ vn<-c("IPAQ_activity_group",
       "MetS_IDF_0","MetS_IDF_1","MetS_IDF_count_0", "MetS_IDF_count_1")
 
 vout<-cbind(out[,.SD,.SDcols=vn])
-vout$ID<-a$ID
+vout$ID<-a3$ID
 
-write.csv(vout,"variable_request_20220819.csv")
+write.csv(vout,"variable_request_20220822.csv")
 
 # mridt<-data.table()
 # mridt$vn<-MRI
