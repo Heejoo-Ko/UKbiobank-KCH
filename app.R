@@ -180,7 +180,7 @@ ui <- navbarPage("UK biobank",
                                          sliderInput("fig_width_forest", "Width (in):", min = 5, max = 15, value = 12)
                                   ),
                                   column(6,
-                                         sliderInput("fig_height_forest", "Width (in):", min = 3, max = 20, value = 5)
+                                         sliderInput("fig_height_forest", "Height (in):", min = 3, max = 20, value = 5)
                                   )
                                 ),
                                 downloadButton("forest", "Download forest plot")
@@ -522,7 +522,7 @@ server <- function(input, output, session) {
   
   tbsub <-  eventReactive(input$action_tbsub,{
     
-    data <- data()
+    data <- data()[!is.na(get(group.tbsub()))]
     label <- data.label()
     
     
