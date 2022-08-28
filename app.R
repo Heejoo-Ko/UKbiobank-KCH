@@ -1,3 +1,4 @@
+options(shiny.sanitize.errors=F)
 library(shiny);library(shinycustomloader);library(ggpubr);library(survival);library(jsmodule);library(DT)
 #source("global.R")
 library(data.table);library(magrittr);library(jstable)
@@ -8,12 +9,16 @@ info <- readRDS("info.RDS")
 
 ## Load fst data: Except MRI
 varlist <- info$varlist[names(info$varlist)[c(1:4,6,7)]]
-out <- fst::read_fst("data.fst", as.data.table = T, columns = unlist(varlist)) 
+out <- fst::read_fst("data.fst", as.data.table = T, columns = unlist(varlist))
 
 factor_vars <- info$factor_vars
 out[, (factor_vars) := lapply(.SD, factor), .SDcols = factor_vars]
 
 out.label <- info$label
+
+out<-out[!(prev_dementia==1 | prev_parkinson==1 | prev_motor_neuron_disease==1 | prev_IHD==1 | prev_stroke==1),.SD,.SDcols=!c("prev_dementia","prev_parkinson","prev_motor_neuron_disease","prev_IHD","prev_stroke")]
+out.label<-out.label[!grep("prev_",variable),,]
+
 
 vars.surv <- sapply(strsplit(varlist$Event, "_"), `[[`, 1)
 
@@ -81,7 +86,7 @@ ui <- navbarPage("UK biobank",
                             tabPanel("Cox model",
                                      sidebarLayout(
                                          sidebarPanel(
-                                             checkboxGroupInput("negday_cox", "Exclude day <= 0", vars.surv, vars.surv[1], inline = T),
+                                             
                                              coxUI("cox")
                                          ),
                                          mainPanel(
@@ -117,7 +122,7 @@ ui <- navbarPage("UK biobank",
                             tabPanel("Kaplan-meier plot",
                                      sidebarLayout(
                                          sidebarPanel(
-                                             checkboxGroupInput("negday_kap", "Exclude day <= 0", vars.surv, vars.surv[1], inline = T),
+                                             
                                              kaplanUI("kaplan")
                                          ),
                                          mainPanel(
@@ -145,7 +150,7 @@ ui <- navbarPage("UK biobank",
                             tabPanel("Time-dependent ROC",
                                      sidebarLayout(
                                          sidebarPanel(
-                                             checkboxGroupInput("negday_timeroc", "Exclude day <= 0", vars.surv, vars.surv[1], inline = T),
+                                             
                                              timerocUI("timeroc")
                                          ),
                                          mainPanel(
@@ -212,9 +217,6 @@ server <- function(input, output, session) {
             
         })
     })
-    
-    
-    
     
     
     
@@ -366,8 +368,7 @@ server <- function(input, output, session) {
     
     
     
-    
-    out_tb1 <- callModule(tb1module2, "tb1", data = data, data_label = data.label, data_varStruct = NULL, nfactor.limit = nfactor.limit, showAllLevels = T)
+    out_tb1 <- callModule(tb1module2, "tb1", data = data, data_label=data.label, data_varStruct = NULL, nfactor.limit = nfactor.limit, showAllLevels = T)
     
     output$table1 <- renderDT({
         tb <- out_tb1()$table
@@ -417,15 +418,7 @@ server <- function(input, output, session) {
     
     
     data.cox <- reactive({
-        if (!is.null(input$negday_cox)){
-            dd <- data()
-            for (v in input$negday_cox){
-                dd <- dd[get(paste0(v, "_day")) > 0]
-            }
-            return(dd)
-        } else{
-            return(data())
-        }
+        return(data())
     })
     
     out_cox <- callModule(coxModule, "cox", data = data.cox, data_label = data.label, data_varStruct = reactive(varlist[names(varlist)[c(2, 3, 1, 4)]]), default.unires = F, nfactor.limit = nfactor.limit)
@@ -454,18 +447,11 @@ server <- function(input, output, session) {
     })
     
     data.kap <- reactive({
-        if (!is.null(input$negday_kap)){
-            dd <- data()
-            for (v in input$negday_kap){
-                dd <- dd[get(paste0(v, "_day")) > 0]
-            }
-            return(dd)
-        } else{
-            return(data())
-        }
+      return(data())
     })
     
     out_kaplan <- callModule(kaplanModule, "kaplan", data = data.kap, data_label = data.label, data_varStruct = reactive(varlist[names(varlist)[c(2, 3, 1, 4)]]), nfactor.limit = nfactor.limit)
+    
     
     output$kaplan_plot <- renderPlot({
         print(out_kaplan())
@@ -484,15 +470,7 @@ server <- function(input, output, session) {
     })
     
     data.timeroc <- reactive({
-        if (!is.null(input$negday_timeroc)){
-            dd <- data()
-            for (v in input$negday_timeroc){
-                dd <- dd[get(paste0(v, "_day")) > 0]
-            }
-            return(dd)
-        } else{
-            return(data())
-        }
+      return(data())
     })
     
     out_timeroc <- callModule(timerocModule, "timeroc", data = data.timeroc, data_label = data.label, data_varStruct = reactive(varlist[names(varlist)[c(2, 3, 1, 4)]]), nfactor.limit = nfactor.limit)
