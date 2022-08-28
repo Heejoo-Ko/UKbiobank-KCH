@@ -1,11 +1,12 @@
 library(data.table);library(magrittr);library(parallel);library(fst);library(stats);library(imputeTS);library(readxl)
-
+setDTthreads(0)
 setwd("/home/heejooko/ShinyApps/UKbiobank")
 # setwd("/home/js/UKbiobank/UKbiobank2022")
 # list.files(path=".", pattern=NULL, all.files=FALSE, full.names=FALSE)
 
-mydata <-read.delim("ukb49960.tab", header = TRUE, sep = "\t", quote = "")
-mydata <- as.data.table(mydata)
+mydata <- fread("ukb49960.tab")
+#mydata <-read.delim("ukb49960.tab", header = TRUE, sep = "\t", quote = "")
+#mydata <- as.data.table(mydata)
 
 # bd <- fst::read_fst("/home/heejooko/ShinyApps/UKbiobank/ukb47038.fst", as.data.table = T)
 
@@ -523,7 +524,7 @@ Cog$PM_fu_time<-mydata[,..myCol][,lapply(.SD,function(x){ifelse(x==-1,NA,x)}),.S
 # names(mydata)[grep("4282,20138,20240",names(mydata))]
 
 # Cog$ID<-a$ID
-으
+
 #Brain MRI------------------------------------------------------------------
 
 # Diffusion brain MRI
@@ -882,8 +883,8 @@ a$stroke_ischaemic_outcome_date<-mydata$f.42008.0.0
 a$stroke_intracerebral_haemorrhage_outcome<-ifelse(is.na(mydata$f.42010.0.0),0,1)
 a$stroke_intracerebral_haemorrhage_outcome_date<-mydata$f.42010.0.0
 
-a$stroke_subarachnoid_haemorrhage_outcome<-ifelse(is.na(mydata$f.42013.0.0),0,1)
-a$stroke_subarachnoid_haemorrhage_outcome_date<-mydata$f.42013.0.0
+a$stroke_subarachnoid_haemorrhage_outcome<-ifelse(is.na(mydata$f.42012.0.0),0,1)
+a$stroke_subarachnoid_haemorrhage_outcome_date<-mydata$f.42012.0.0
 
 #Death
 
@@ -893,11 +894,14 @@ a$death<-ifelse(!is.na(a$death_date),1,0)
 #date->day conversion
 events<-names(a) %>% .[grepl(pattern='_outcome|death',x=.)] %>% .[!grepl("_date",.)]
 
-days <- sapply(events,
-               function(v){
-                 as.integer(ifelse(!is.na(a[[paste0(v, "_date")]]),a[[paste0(v, "_date")]],
-                                   ifelse(!is.na(a[["death_date"]]),a[["death_date"]],as.IDate("2019-03-31")))) - as.integer(as.Date(a[["visit_date_0"]]))
-               }) 
+
+days <- sapply(events, function(v){as.integer(pmin(a[[paste0(v, "_date")]], a[["death_date"]], as.IDate("2019-03-31"), na.rm = T) - as.IDate(a[["visit_date_0"]]))})
+
+#days <- sapply(events,
+#               function(v){
+#                 as.integer(ifelse(!is.na(a[[paste0(v, "_date")]]),a[[paste0(v, "_date")]],
+#                                   ifelse(!is.na(a[["death_date"]]),a[["death_date"]],as.IDate("2019-03-31")))) - as.integer(as.IDate(a[["visit_date_0"]]))
+#               }) 
 colnames(days) <- gsub("_outcome", "_day", events)
 colnames(days)[colnames(days) == "death"] <- "death_day"
 

@@ -1,7 +1,7 @@
 options(shiny.sanitize.errors=F)
 library(shiny);library(shinycustomloader);library(ggpubr);library(survival);library(jsmodule);library(DT)
 #source("global.R")
-library(data.table);library(magrittr);library(jstable)
+library(data.table);library(magrittr);library(jstable);library(forestplot);library(shinyWidgets);library(officer)
 nfactor.limit <- 20  ## For module
 
 ### Load info
@@ -160,7 +160,35 @@ ui <- navbarPage("UK biobank",
                                          )
                                      )
                             )
-                 )
+                 ),
+                 tabPanel("Subgroup analysis",
+                          sidebarLayout(
+                            sidebarPanel(
+                              selectInput("dep_tbsub", "Outcome", choices = varlist$Event, selected = varlist$Event[1]),
+                              selectInput("group_tbsub", "Main variable", varlist$MetS, varlist$MetS[1]),
+                              selectInput("subgroup_tbsub", "Subgroup to analyze", intersect(c(varlist$Base, varlist$Medication, varlist$Cognition), factor_vars), "sex", multiple = T),
+                              selectInput("cov_tbsub", "Additional covariates", varlist[4:6], selected = NULL, multiple = T),
+                              actionBttn("action_tbsub", "Run subgroup analysis")
+                            ),
+                            mainPanel(
+                              withLoader(DTOutput("tablesub"), type="html", loader="loader6"),
+                              h3("Download options"),
+                              wellPanel(
+                                tagList(
+                                  column(6,
+                                         sliderInput("fig_width_forest", "Width (in):", min = 5, max = 15, value = 12)
+                                  ),
+                                  column(6,
+                                         sliderInput("fig_height_forest", "Width (in):", min = 3, max = 20, value = 5)
+                                  )
+                                ),
+                                downloadButton("forest", "Download forest plot")
+                                
+                              )
+                            )
+                          )
+                          
+                 ),
 )
 
 server <- function(input, output, session) {
@@ -483,6 +511,138 @@ server <- function(input, output, session) {
         datatable(out_timeroc()$tb, rownames=F, editable = F, extensions= "Buttons", caption = "ROC results",
                   options = c(jstable::opt.tbreg("roctable"), list(scrollX = TRUE)))
     })
+    
+    
+    
+    group.tbsub <- reactive({
+      input$group_tbsub
+    })
+    
+    
+    tbsub <-  eventReactive(input$action_tbsub,{
+      
+      data <- data()
+      label <- data.label()
+      
+      
+      var.event <- input$dep_tbsub
+      var.day <- varlist$Time[which(varlist$Event == var.event)]
+      
+      #data <- data[!( get(var.day) <= input$year_tbsub[1]) & !(is.na(get(group.tbsub())))]
+      
+      #data[[var.event]] <- ifelse(data[[var.day]] >= input$year_tbsub[2] & data[[var.event]] == "1", 0,  as.numeric(as.vector(data[[var.event]])))
+      #data[[var.day]] <- ifelse(data[[var.day]] >= input$year_tbsub[2], input$year_tbsub[2], data[[var.day]])
+      
+      data[[var.event]] <- as.numeric(as.vector(data[[var.event]]))
+      
+      
+      form <- as.formula(paste("Surv(", var.day, ",", var.event, ") ~ ", group.tbsub(), sep = ""))
+      vs <- input$subgroup_tbsub
+      
+      tbsub <-  TableSubgroupMultiCox(form, var_subgroups = vs, var_cov = setdiff(input$cov_tbsub, vs),
+                                      data=data, time_eventrate = 2, line = F)
+      #data[[var.event]] <- ifelse(data[[var.day]] > 365 * 5 & data[[var.event]] == 1, 0,  as.numeric(as.vector(data[[var.event]])))
+      
+      lapply(vs, 
+             function(x){
+               cc <- data.table(t(c(x, NA, NA)))
+               
+               dd <- lapply(levels(data[[group.tbsub()]]),
+                            function(y){
+                              ev <- data[get(group.tbsub()) == y, sum(as.numeric(as.vector(get(var.event)))), keyby = get(x)]
+                              nn <- data[get(group.tbsub()) == y, .N, keyby = get(x)]
+                              vv <- paste0(ev[, V1], "/", nn[, N], " (", round(ev[, V1]/ nn[, N] * 100, 1), ")")
+                              data.table(ev[, 1], vv)
+                            })
+               dd.bind <- cbind(dd[[1]], dd[[2]][, -1])
+               names(cc) <- names(dd.bind)
+               rbind(cc, dd.bind)
+             }) %>% rbindlist -> ll
+      
+      
+      ev.ov <- data[, sum(as.numeric(as.vector(get(var.event)))), keyby = get(group.tbsub())][, V1]
+      nn.ov <- data[, .N, keyby = get(group.tbsub())][, N]
+      
+      ov <- data.table(t(c("OverAll", paste0(ev.ov, "/", nn.ov, " (", round(ev.ov/nn.ov * 100, 1), ")"))))
+      names(ov) <- names(ll)
+      cn <- rbind(ov, ll)
+      
+      names(cn)[-1] <- label[variable == group.tbsub(), val_label]
+      tbsub <- cbind(Variable = tbsub[, 1], cn[, -1], tbsub[, c(7, 8, 4, 5, 6, 9, 10)])
+      
+      tbsub[-1, 1] <- unlist(lapply(vs, function(x){c(label[variable == x, var_label][1], paste0("     ", label[variable == x, val_label]))}))
+      colnames(tbsub)[1:6] <- c("Subgroup", paste0("N(%): ", label[variable == group.tbsub(), val_label]), paste0(paste(input$year_tbsub, collapse = "~"), "-year KM rate(%): ", label[variable == group.tbsub(), val_label]), "HR")
+      #colnames(tbsub)[c(4)] <- c("HR")
+      #tbsub[27:30, Subgroup := c("EES", "ZES", "BES", "Others")]
+      
+      return(tbsub)
+    })
+    
+    output$tablesub <- renderDT({
+      
+      datatable(tbsub()[, .SD, .SDcols = -c(4, 5)], caption = paste0(input$dep_tbsub, " subgroup analysis"), rownames = F, extensions= "Buttons",
+                options = c(opt.tb1(paste0("tbsub_original")),
+                            list(scrollX = TRUE, columnDefs = list(list(className = 'dt-right', targets = 0)))
+                )) 
+      
+    })
+    
+    
+    
+    
+    
+    output$forest <- downloadHandler(
+      filename =  function() {
+        paste(input$dep_tbsub,"_forestplot.pptx", sep="")
+        
+      },
+      # content is a function with argument file. content writes the plot to the device
+      content = function(file) {
+        withProgress(message = 'Download in progress',
+                     detail = 'This may take a while...', value = 0, {
+                       for (i in 1:15) {
+                         incProgress(1/15)
+                         Sys.sleep(0.01)
+                       }
+                       
+                       
+                       #devEMF::emf(file, width = 15, height = 5, coordDPI = 300, emfPlus = T)
+                       data <- tbsub()
+                       
+                       tabletext <- cbind(c("Subgroup","\n",data$Subgroup),
+                                          c("N(%)\n0", "\n" , data[[2]]),
+                                          c("N(%)\n1", "\n", data[[3]]),
+                                          c("P Value","\n",data$`P value`),
+                                          c("P for interaction","\n",data$`P for interaction`))
+                       
+                       tabletext <- tabletext[, c(1,2,3, 4, 5)]
+                       ## Save as tiff 
+                       forestplot::forestplot(labeltext=tabletext, graph.pos=4, xticks = c(0.5, 1, 2), xlog= T, align = c("r", rep("c", ncol(tabletext) - 1)),                          ## graph.pos- column number
+                                              mean=c(NA,NA,as.numeric(data$HR)), 
+                                              lower=c(NA,NA,as.numeric(data$Lower)), upper=c(NA,NA,as.numeric(data$Upper)),
+                                              title="Hazard Ratio",
+                                              xlab="<---non-MetS-risky ---    ---MetS risky --->",    ## You cas modify this.
+                                              hrzl_lines=list("3" = gpar(lwd=1, col="#99999922")
+                                              ),
+                                              
+                                              txt_gp=fpTxtGp(label=gpar(cex=1.25),
+                                                             ticks=gpar(cex=1.1),
+                                                             xlab=gpar(cex = 1.2),
+                                                             title=gpar(cex = 1.2)),
+                                              col=fpColors(box="black", lines="black", zero = "gray50"),
+                                              zero=1, cex=0.9, lineheight = "auto", boxsize=0.4, colgap=unit(6,"mm"),
+                                              lwd.ci=2, ci.vertices=F, ci.vertices.height = 0.4) -> zz
+                       #print(zz)
+                       my_vec_graph <- rvg::dml(code = print(zz))
+                       
+                       doc <- officer::read_pptx()
+                       doc <- officer::add_slide(doc, layout = "Title and Content", master = "Office Theme")
+                       doc <- officer::ph_with(doc, my_vec_graph, location = officer::ph_location(width = input$fig_width_forest, height = input$fig_height_forest))
+                       print(doc, target = file)
+                     })
+        
+      }
+    )
     
     session$onSessionEnded(function() {
         session$close()
