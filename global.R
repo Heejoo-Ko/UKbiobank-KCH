@@ -731,9 +731,9 @@ codelist$Platelet_aggregation_inhibitors_excl.heparin<-unique(medication_excel[A
 codelist$clopidogrel<-unique(medication_excel[ATCname=="clopidogrel",UKBdrugID,])
 codelist$non_clopidogrel_ANTITHROMBOTIC_AGENTS<-codelist$ANTITHROMBOTIC_AGENTS[!(codelist$ANTITHROMBOTIC_AGENTS %in% codelist$clopidogrel)]
 codelist$acetylsalicylic_acid<-unique(medication_excel[ATCname=="acetylsalicylic acid"|
-                                                         grepl("acetylsalicylic acid|aspirin",UKBdrugterm)|
-                                                         grepl("acetylsalicylic acid|aspirin",NSFname)|
-                                                         grepl("acetylsalicylic acid|aspirin",UKBdrug_trc),UKBdrugID,])
+                                                       grepl("acetylsalicylic acid|aspirin",UKBdrugterm)|
+                                                       grepl("acetylsalicylic acid|aspirin",NSFname)|
+                                                       grepl("acetylsalicylic acid|aspirin",UKBdrug_trc),UKBdrugID,])
 codelist$dipyridamole<-unique(medication_excel[ATCname=="dipyridamole"|grepl("dipyridamole",UKBdrug_trc),UKBdrugID,])
 codelist$cilostazol<-unique(medication_excel[UKBdrug_trc=="cilostazol"|UKBdrug_trc=="pletal",UKBdrugID,])
 codelist$ticlopidine<-unique(medication_excel[ATCname=="ticlopidine",UKBdrugID,])
@@ -764,10 +764,10 @@ medication_vars<-a[,.SD,.SDcols=c((ncol(a)-length(codelist)*4+1):ncol(a))] %>% c
 
 #MetS Diagnostic Criteria--------------------------------------------------------------------
 
-a$DM_0<-ifelse(a$DM_diagnosed_0==1 | a$insulin_medication_0==1,1,0)
-a$DM_1<-ifelse(a$DM_diagnosed_1==1 | a$insulin_medication_1==1,1,0)
-a$DM_2<-ifelse(a$DM_diagnosed_2==1 | a$insulin_medication_2==1,1,0)
-a$DM_3<-ifelse(a$DM_diagnosed_3==1 | a$insulin_medication_3==1,1,0)
+a$DM_0<-ifelse(a$DM_diagnosed_0==1 | a$insulin_medication_self_0==1,1,0)
+a$DM_1<-ifelse(a$DM_diagnosed_1==1 | a$insulin_medication_self_1==1,1,0)
+a$DM_2<-ifelse(a$DM_diagnosed_2==1 | a$insulin_medication_self_2==1,1,0)
+a$DM_3<-ifelse(a$DM_diagnosed_3==1 | a$insulin_medication_self_3==1,1,0)
 
 #HbA1c: 6.0% == 42mmol/mol
 #TG: 150mg/dL == 1.7mmol/L
@@ -775,7 +775,7 @@ a$DM_3<-ifelse(a$DM_diagnosed_3==1 | a$insulin_medication_3==1,1,0)
 #HDL: 50mg/dL == 1.29mmol/L
 a$MetS_Fasting_Glucose_0<-as.integer((a$fasting_time_0>=8 & a$glucose_0>=5.6) |
                                        a$HbA1c_0>=42 | 
-                                       a$insulin_medication_0==1 |
+                                       a$insulin_medication_self_0==1 |
                                        a$DRUGS_USED_IN_DIABETES_0==1)
 a$MetS_High_BP_0<-as.integer((a$sysBP_0>=130 | a$diaBP_0>=85) |
                                a$BP_medication_self_0==1 |
@@ -797,7 +797,7 @@ a$MetS_IDF2009_0<-as.integer(a$MetS_WC_IDF2009_0==1 &
 
 a$MetS_Fasting_Glucose_1<-as.integer((a$fasting_time_1>=8 & a$glucose_1>=5.6) |
                                        a$HbA1c_1>=42 | 
-                                       a$insulin_medication_1==1 |
+                                       a$insulin_medication_self_1==1 |
                                        a$DRUGS_USED_IN_DIABETES_1==1)
 a$MetS_High_BP_1<-as.integer((a$sysBP_1>=130 | a$diaBP_1>=85) |
                                a$BP_medication_self_1==1 |
@@ -983,7 +983,7 @@ varlist <- list(
            "tot_protein_0","tot_protein_1","urate_0","urate_1",                                       
            "urea_0","urea_1","vitD_0","vitD_1","CRP_cat_0","CRP_cat_1",
            "prev_dementia","prev_parkinson","prev_motor_neuron_disease","prev_IHD","prev_stroke"
-  ),
+           ),
   MRI = grep(pattern='dMRI_|T1_', x=names(a), value = T),
   Medication = medication_vars,
   Cognition = colnames(Cog)
@@ -1081,4 +1081,3 @@ write.csv(vout,"variable_request_20220828.csv")
 #                                                                           ifelse(grepl("T1_Freesurfer_desikan_pial",vn),193,
 #                                                                                        ifelse(grepl("T1_Freesurfer_desikan_white",vn),192,191))))))))))))]
 # fwrite(mridt,"mridt.csv")
-
