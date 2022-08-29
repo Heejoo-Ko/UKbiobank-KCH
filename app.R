@@ -6,19 +6,29 @@ nfactor.limit <- 20  ## For module
 
 ### Load info
 info <- readRDS("info.RDS")
-
 ## Load fst data: Except MRI
 varlist <- info$varlist[names(info$varlist)[c(1:4,6,7)]]
 out <- fst::read_fst("data.fst", as.data.table = T, columns = unlist(varlist))
 
-factor_vars <- info$factor_vars
-out[, (factor_vars) := lapply(.SD, factor), .SDcols = factor_vars]
 
 out.label <- info$label
 
+## Exclude day <= 0
+for (v in varlist$Time){
+  out <- out[get(v) > 0]
+}
+
+
+## Exclude missing in smoking/alcohol
+out <- out[smoking_status_0 != 9 & alcohol_status_0 != 9]
+
+factor_vars <- info$factor_vars
+out[, (factor_vars) := lapply(.SD, factor), .SDcols = factor_vars]
+
 out<-out[!(prev_dementia==1 | prev_parkinson==1 | prev_motor_neuron_disease==1 | prev_IHD==1 | prev_stroke==1),.SD,.SDcols=!c("prev_dementia","prev_parkinson","prev_motor_neuron_disease","prev_IHD","prev_stroke")]
-out <- out[dementia_all_day > 0 & parkinson_PD_day > 0 & motor_neuron_disease_day > 0 & MI_all_day > 0 & stroke_all_day > 0]
+
 out.label<-out.label[!grep("prev_",variable),,]
+
 
 
 vars.surv <- sapply(strsplit(varlist$Event, "_"), `[[`, 1)
@@ -180,7 +190,7 @@ ui <- navbarPage("UK biobank",
                                          sliderInput("fig_width_forest", "Width (in):", min = 5, max = 15, value = 12)
                                   ),
                                   column(6,
-                                         sliderInput("fig_height_forest", "Width (in):", min = 3, max = 20, value = 5)
+                                         sliderInput("fig_height_forest", "Height (in):", min = 3, max = 20, value = 5)
                                   )
                                 ),
                                 downloadButton("forest", "Download forest plot")
@@ -522,7 +532,7 @@ server <- function(input, output, session) {
   
   tbsub <-  eventReactive(input$action_tbsub,{
     
-    data <- data()
+    data <- data()[!is.na(get(group.tbsub()))]
     label <- data.label()
     
     
@@ -550,8 +560,8 @@ server <- function(input, output, session) {
              
              dd <- lapply(levels(data[[group.tbsub()]]),
                           function(y){
-                            ev <- data[get(group.tbsub()) == y, sum(as.numeric(as.vector(get(var.event)))), keyby = get(x)]
-                            nn <- data[get(group.tbsub()) == y, .N, keyby = get(x)]
+                            ev <- data[!is.na(get(x)) & get(group.tbsub()) == y, sum(as.numeric(as.vector(get(var.event)))), keyby = get(x)]
+                            nn <- data[!is.na(get(x)) & get(group.tbsub()) == y, .N, keyby = get(x)]
                             vv <- paste0(ev[, V1], "/", nn[, N], " (", round(ev[, V1]/ nn[, N] * 100, 1), ")")
                             data.table(ev[, 1], vv)
                           })
