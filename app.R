@@ -6,19 +6,29 @@ nfactor.limit <- 20  ## For module
 
 ### Load info
 info <- readRDS("info.RDS")
-
 ## Load fst data: Except MRI
 varlist <- info$varlist[names(info$varlist)[c(1:4,6,7)]]
 out <- fst::read_fst("data.fst", as.data.table = T, columns = unlist(varlist))
 
-factor_vars <- info$factor_vars
-out[, (factor_vars) := lapply(.SD, factor), .SDcols = factor_vars]
 
 out.label <- info$label
 
+## Exclude day <= 0
+for (v in varlist$Time){
+  out <- out[get(v) > 0]
+}
+
+
+## Exclude missing in smoking/alcohol
+out <- out[smoking_status_0 != 9 & alcohol_status_0 != 9]
+
+factor_vars <- info$factor_vars
+out[, (factor_vars) := lapply(.SD, factor), .SDcols = factor_vars]
+
 out<-out[!(prev_dementia==1 | prev_parkinson==1 | prev_motor_neuron_disease==1 | prev_IHD==1 | prev_stroke==1),.SD,.SDcols=!c("prev_dementia","prev_parkinson","prev_motor_neuron_disease","prev_IHD","prev_stroke")]
-out <- out[dementia_all_day > 0 & parkinson_PD_day > 0 & motor_neuron_disease_day > 0 & MI_all_day > 0 & stroke_all_day > 0]
+
 out.label<-out.label[!grep("prev_",variable),,]
+
 
 
 vars.surv <- sapply(strsplit(varlist$Event, "_"), `[[`, 1)
