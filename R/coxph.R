@@ -8,6 +8,10 @@
 #' @rdname coxUI
 #' @export
 
+info <- readRDS("info.RDS")
+## Load fst data: Except MRI
+varlist <- info$varlist[names(info$varlist)[c(1:4,6,7)]]
+
 coxUI <- function(id) {
   # Create a namespace function using the provided id
   ns <- NS(id)
