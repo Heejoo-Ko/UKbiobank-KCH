@@ -550,8 +550,8 @@ server <- function(input, output, session) {
              
              dd <- lapply(levels(data[[group.tbsub()]]),
                           function(y){
-                            ev <- data[get(group.tbsub()) == y, sum(as.numeric(as.vector(get(var.event)))), keyby = get(x)]
-                            nn <- data[get(group.tbsub()) == y, .N, keyby = get(x)]
+                            ev <- data[!is.na(get(x)) & get(group.tbsub()) == y, sum(as.numeric(as.vector(get(var.event)))), keyby = get(x)]
+                            nn <- data[!is.na(get(x)) & get(group.tbsub()) == y, .N, keyby = get(x)]
                             vv <- paste0(ev[, V1], "/", nn[, N], " (", round(ev[, V1]/ nn[, N] * 100, 1), ")")
                             data.table(ev[, 1], vv)
                           })
