@@ -1,10 +1,23 @@
-library(data.table);library(magrittr);library(parallel);library(fst);library(stats);library(imputeTS);library(readxl)
+library(data.table);library(magrittr);library(parallel);library(fst);library(stats);library(imputeTS);library(readxl);library(readr)
 setDTthreads(0)
-setwd("/home/heejooko/ShinyApps/UKbiobank")
+
 # setwd("/home/js/UKbiobank/UKbiobank2022")
 # list.files(path=".", pattern=NULL, all.files=FALSE, full.names=FALSE)
 
-mydata <- fread("ukb49960.tab", header = T, sep = "\t", quote = "")
+setwd("/home/heejooko/ShinyApps/UKbiobank")
+pheno<-as.data.table(read_tsv(file='merged_pheno_v2.txt'))
+
+
+pheno %>% names
+sapply(pheno,class)
+
+pheno$APOE_status %>% as.factor %>% summary
+pheno$IID_chkim %>% unique %>% length
+
+
+
+setwd("/home/heejooko/UKbiobank")
+mydata <- fread("ukb669045.tab", header = T, sep = "\t", quote = "")
 #mydata <-read.delim("ukb49960.tab", header = TRUE, sep = "\t", quote = "")
 #mydata <- as.data.table(mydata)
 
@@ -550,6 +563,8 @@ categorynames<-c("dMRI_skeleton","dMRI_weighted_means",
                  "T1_Freesurfer_ASEG","T1_Freesurfer_BA_exvivo","T1_Freesurfer_a2009s","T1_Freesurfer_DKT",
                  "T1_Freesurfer_desikan_gw","T1_Freesurfer_desikan_pial","T1_Freesurfer_desikan_white","T1_Freesurfer_subsegmentation")
 
+setwd("/home/heejooko/ShinyApps/UKbiobank")
+
 mrivars <- excel_sheets("brain mri variables.xlsx") %>% 
   lapply(function(x){read_excel("brain mri variables.xlsx",sheet=x)})
 
@@ -731,9 +746,9 @@ codelist$Platelet_aggregation_inhibitors_excl.heparin<-unique(medication_excel[A
 codelist$clopidogrel<-unique(medication_excel[ATCname=="clopidogrel",UKBdrugID,])
 codelist$non_clopidogrel_ANTITHROMBOTIC_AGENTS<-codelist$ANTITHROMBOTIC_AGENTS[!(codelist$ANTITHROMBOTIC_AGENTS %in% codelist$clopidogrel)]
 codelist$acetylsalicylic_acid<-unique(medication_excel[ATCname=="acetylsalicylic acid"|
-                                                       grepl("acetylsalicylic acid|aspirin",UKBdrugterm)|
-                                                       grepl("acetylsalicylic acid|aspirin",NSFname)|
-                                                       grepl("acetylsalicylic acid|aspirin",UKBdrug_trc),UKBdrugID,])
+                                                         grepl("acetylsalicylic acid|aspirin",UKBdrugterm)|
+                                                         grepl("acetylsalicylic acid|aspirin",NSFname)|
+                                                         grepl("acetylsalicylic acid|aspirin",UKBdrug_trc),UKBdrugID,])
 codelist$dipyridamole<-unique(medication_excel[ATCname=="dipyridamole"|grepl("dipyridamole",UKBdrug_trc),UKBdrugID,])
 codelist$cilostazol<-unique(medication_excel[UKBdrug_trc=="cilostazol"|UKBdrug_trc=="pletal",UKBdrugID,])
 codelist$ticlopidine<-unique(medication_excel[ATCname=="ticlopidine",UKBdrugID,])
@@ -909,6 +924,23 @@ days<-as.data.table(days)
 # days$ID<-a$ID
 
 
+# MERGE a, days, Cog
+a <- cbind(a,days,Cog)
+
+#APOE
+apheno<-pheno[,.SD,.SDcols=c("APOE_status","IID_chkim")]
+setnames(apheno,"IID_chkim","ID")
+
+apheno[,APOEe4:=as.factor(ifelse(APOE_status %in% c("e1/e2","e2/e2","e2/e3","e3/e3"),0,
+                             ifelse(APOE_status %in% c("e1/e4","e2/e4","e3/e4"),1,
+                                    ifelse(APOE_status=="e4/e4",2,NA))))]
+apheno[,APOEe2:=as.factor(ifelse(APOE_status %in% c("e1/e4","e3/e3","e3/e4","e4/e4"),0,
+                                 ifelse(APOE_status %in% c("e1/e2","e2/e3","e2/e4"),1,
+                                        ifelse(APOE_status=="e2/e2",2,NA))))]
+apheno<-apheno[,.SD,.SDcols=!'APOE_status']
+
+a<-merge(a,apheno,all=F,by="ID")
+
 #Exclusion criteria----------------------------------------------------------------------------------
 #20002 Non-cancer illness code, self-reported
 #dementia_all_outcome 1263
@@ -922,6 +954,8 @@ a$prev_parkinson<-ifelse(grepl("1262",a$noncancer_illness_self_0),1,0)
 a$prev_motor_neuron_disease<-ifelse(grepl("1259",a$noncancer_illness_self_0),1,0)
 a$prev_IHD<-ifelse(grepl("1074|1075",a$noncancer_illness_self_0),1,0)
 a$prev_stroke<-a$stroke_diagnosed_0
+
+
 
 # a[,lapply(.SD,function(x){summary(as.factor(x))}),.SDcols=c("prev_dementia","prev_parkinson","prev_motor_neuron_disease","prev_IHD","prev_stroke")]
 
@@ -982,15 +1016,15 @@ varlist <- list(
            "testosterone_0","testosterone_1","Tbil_0","Tbil_1",
            "tot_protein_0","tot_protein_1","urate_0","urate_1",                                       
            "urea_0","urea_1","vitD_0","vitD_1","CRP_cat_0","CRP_cat_1",
-           "prev_dementia","prev_parkinson","prev_motor_neuron_disease","prev_IHD","prev_stroke"
-           ),
+           "prev_dementia","prev_parkinson","prev_motor_neuron_disease","prev_IHD","prev_stroke",
+           "APOEe4","APOEe2"
+  ),
   MRI = grep(pattern='dMRI_|T1_', x=names(a), value = T),
   Medication = medication_vars,
   Cognition = colnames(Cog)
 )
 
-out <- cbind(a,days,Cog)
-out <- out[, .SD, .SDcols = unlist(varlist)]
+out <- a[, .SD, .SDcols = unlist(varlist)]
 
 factor_vars<-c("sex", "smoking_status_0","smoking_status_1","smoking_status_2","smoking_status_3",
                "alcohol_status_0","alcohol_status_1","alcohol_status_2","alcohol_status_3",
@@ -1025,14 +1059,16 @@ factor_vars<-c("sex", "smoking_status_0","smoking_status_1","smoking_status_2","
                "CRP_cat_0","CRP_cat_1","IPAQ_activity_group",
                "prev_dementia","prev_parkinson","prev_motor_neuron_disease","prev_IHD","prev_stroke",
                medication_vars,
-               "FI_fu","TM_fu","PM_fu")
+               "FI_fu","TM_fu","PM_fu","APOEe4","APOEe2")
 out[,(factor_vars):=lapply(.SD,as.factor),.SDcols=factor_vars]
+
+# lapply(a[,.SD,.SDcols=grep("_date",names(a),value=T)],function(x){max(x,na.rm=T)})
 
 out.label <- jstable::mk.lev(out)
 
 # label.main[variable == " ", `:=`(var_label = " ", val_label = c("","",""))]
 
-fst::write_fst(out, "data.fst")
+fst::write_fst(out, "data221010.fst")
 saveRDS(list(factor_vars = factor_vars, label= out.label, varlist = varlist), "info.RDS")
 
 #The other study data----------------------------------------------------------------------------------
@@ -1064,7 +1100,7 @@ vout<-cbind(vout,out[,.SD,.SDcols=vn])
 vout$prev_DM<-a$DM_diagnosed_0
 vout$prev_HTN<-a$HT_diagnosed_0
 
-write.csv(vout,"variable_request_20220828.csv")
+write.csv(vout,"variable_request_20220831.csv")
 
 #mri data colnames----------------------------------------------------------------------------------
 # mridt<-data.table()
