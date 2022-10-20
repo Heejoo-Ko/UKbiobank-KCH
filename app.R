@@ -1,5 +1,5 @@
 options(shiny.sanitize.errors=F)
-library(shiny);library(shinycustomloader);library(ggpubr);library(survival);library(jsmodule);library(DT)
+library(shiny);library(shinycustomloader);library(ggpubr);library(survival);library(jsmodule);library(DT);library(survival)
 #source("global.R")
 library(data.table);library(magrittr);library(jstable);library(forestplot);library(shinyWidgets);library(officer)
 nfactor.limit <- 20  ## For module
@@ -9,53 +9,153 @@ info <- readRDS("info.RDS")
 ## Load fst data: Except MRI
 varlist <- info$varlist[names(info$varlist)[c(1:4,6,7)]]
 
-out <- fst::read_fst("data221010.fst", as.data.table = T, columns = unlist(varlist))
+out <- fst::read_fst("data221020.fst", as.data.table = T, columns = unlist(varlist))
 out.label <- info$label
 
+#out.final----------------------------------------------------------------------------
+varlist_final <- list(
+  Exposure = "MetS_ATP2005_0",
+  Outcomes = c("dementia_all_outcome","dementia_alzheimer_outcome","dementia_vascular_outcome",
+               "stroke_all_outcome","stroke_ischaemic_outcome","stroke_haemorrhage_outcome",
+               "MI_all_outcome","death"),
+  Time = c("dementia_all_day","dementia_alzheimer_day","dementia_vascular_day",
+               "stroke_all_day","stroke_ischaemic_day","stroke_haemorrhage_day",
+               "MI_all_day","death_day"),
+  Covariates = c("age","sex","townsend_deprivation_index","education_college_university_0",
+                 "smoking_status_0","alcohol_status_0","MET_activity",
+                 "HMG_CoA_reductase_inhibitors_0","ANTITHROMBOTIC_AGENTS_0","CRP_0"),
+  Stratification = c("Age_cat3_0","CRP_cat_0","CRP_cat5_0","CRP_cat10_0","APOEe2","APOEe4")
+)
 
-# "ALL"; out %>% nrow
+out.final <- out[, .SD, .SDcols = unique(unlist(varlist_final))]
+out.final %>% sapply(.,function(x){sum(is.na(x))})
+out.final[dementia_all_day<0,.N,]
+out.final[stroke_all_day<0,.N,]
+out.final[MI_all_day<0,.N,]
+out.final[smoking_status_0==9,.N,]
+out.final[alcohol_status_0==9,.N,]
 
-## Exclude day <= 0
-for (v in c("dementia_all_day","parkinson_parkinsonism_day","MI_all_day","stroke_all_day")){
-  # print(paste0(v,": ",nrow(out),"-->"))
-  out <- out[get(v) > 0]
-  # print(paste0(nrow(out))); print("  ")
+
+Nflowchart<-data.frame(varname="UKbiobank",excluded="",N=nrow(out.final))
+
+for(v in colnames(out.final)){
+  orN<-nrow(out.final)
+  out.final<-out.final[!is.na(get(v)),.SD,]
+  modN<-nrow(out.final)
+  
+  if(modN!=orN){
+    Nflowchart<-rbind(Nflowchart,
+                      data.frame(varname=paste0(v," missing"),excluded=(orN-modN),N=modN))
+  }
 }
 
-# "Baseline"; out %>% nrow
+for(v in c("dementia_all_day","stroke_all_day","MI_all_day")){
+  orN<-nrow(out.final)
+  out.final<-out.final[get(v)>0,.SD,]
+  modN<-nrow(out.final)
+  if(modN!=orN){
+    Nflowchart<-rbind(Nflowchart,
+                      data.frame(varname=paste0(v," <0"),excluded=(orN-modN),N=modN))
+  }
+}
 
-factor_vars <- info$factor_vars
-out[, (factor_vars) := lapply(.SD, factor), .SDcols = factor_vars]
+for(v in c("smoking_status_0","alcohol_status_0")){
+  orN<-nrow(out.final)
+  
+  out.final<-out.final[get(v)!=9]
+  out.final[[v]]<-factor(out.final[[v]],level=c(0,1,2))
+  
+  modN<-nrow(out.final)
+  if(modN!=orN){
+    Nflowchart<-rbind(Nflowchart,
+                      data.frame(varname=paste0(v," prefer not to answer"),excluded=(orN-modN),N=modN))
+  }
+}
 
+varlist<-varlist_final
+out<-out.final
+sapply(out.final,class)
+out.label <- jstable::mk.lev(out)
 
-out<-out[!(prev_dementia==1),.SD,.SD]
-# "prev_dementia";out %>% nrow
+out.label[variable=="MetS_ATP2005_0",`:=`(val_label=c("Without Mets","With MetS"))]
+out.label[variable=="smoking_status_0",`:=`(val_label=c("Never","Previous","Current"))]
+out.label[variable=="alcohol_status_0",`:=`(val_label=c("Never","Previous","Current"))]
+out.label[variable=="APOEe4",`:=`(val_label=c("No ApoE4","ApoE4 heterozygous","ApoE4 homozygous"))]
+out.label[variable=="APOEe2",`:=`(val_label=c("No ApoE2","ApoE2 heterozygous","ApoE2 homozygous"))]
 
-out<-out[!(prev_parkinson==1),.SD,.SD]
-# "prev_parkinson"; out %>% nrow
+#----------------------------------------------------
+# # "ALL"; out %>% nrow
+# 
+# ## Exclude day <= 0
+# # for (v in c("dementia_all_day","parkinson_parkinsonism_day","MI_all_day","stroke_all_day")){
+# for (v in c("dementia_all_day","MI_all_day","stroke_all_day")){
+#   # print(paste0(v,": ",nrow(out),"-->"))
+#   out <- out[get(v) > 0]
+#   # print(paste0(nrow(out))); print("  ")
+# }
+# 
+# # "Baseline"; out %>% nrow
+# 
+# factor_vars <- info$factor_vars
+# out[, (factor_vars) := lapply(.SD, factor), .SDcols = factor_vars]
+# 
+# out<-out[!(prev_dementia==1),.SD,.SD]
+# # "prev_dementia";out %>% nrow
+# 
+# out<-out[!(prev_IHD==1),.SD,.SD]
+# # "prev_IHD"; out %>% nrow
+# 
+# out<-out[!(prev_stroke==1),.SD,.SDcols=!c("prev_dementia","prev_parkinson","prev_motor_neuron_disease","prev_IHD","prev_stroke")]
+# # "prev_stroke"; out %>% nrow
+# 
+# 
+# ## Exclude missing in smoking/alcohol
+# 
+# 
+# out<-out[smoking_status_0 != 9 & smoking_status_1 != 9 & smoking_status_2 != 9 & smoking_status_3 != 9]
+# # "smoking prefer not to answer"; out %>% nrow
+# out$smoking_status_0<-factor(out$smoking_status_0,level=c(0,1,2))
+# out$smoking_status_1<-factor(out$smoking_status_1,level=c(0,1,2))
+# out$smoking_status_2<-factor(out$smoking_status_2,level=c(0,1,2))
+# out$smoking_status_3<-factor(out$smoking_status_3,level=c(0,1,2))
+# out.label<-out.label[!(variable=="smoking_status_0" & level==9)]
+# out.label<-out.label[!(variable=="smoking_status_1" & level==9)]
+# out.label<-out.label[!(variable=="smoking_status_2" & level==9)]
+# out.label<-out.label[!(variable=="smoking_status_3" & level==9)]
+# 
+# out<-out[alcohol_status_0 != 9 & alcohol_status_1 != 9 & alcohol_status_2 != 9 & alcohol_status_3 != 9]
+# # "alcohol prefer not to answer"; out %>% nrow
+# out$alcohol_status_0<-factor(out$alcohol_status_0,level=c(0,1,2))
+# out$alcohol_status_1<-factor(out$alcohol_status_1,level=c(0,1,2))
+# out$alcohol_status_2<-factor(out$alcohol_status_2,level=c(0,1,2))
+# out$alcohol_status_3<-factor(out$alcohol_status_3,level=c(0,1,2))
+# out.label<-out.label[!(variable=="alcohol_status_0" & level==9)]
+# out.label<-out.label[!(variable=="alcohol_status_1" & level==9)]
+# out.label<-out.label[!(variable=="alcohol_status_2" & level==9)]
+# out.label<-out.label[!(variable=="alcohol_status_3" & level==9)]
+# 
+# 
+# out.label<-out.label[!grep("prev_",variable),,]
 
-out<-out[!(prev_IHD==1),.SD,.SD]
-# "prev_IHD"; out %>% nrow
+## Subset error 수정
+# factor_vars <- setdiff(factor_vars, grep("prev_", factor_vars, value = T))
 
-out<-out[!(prev_stroke==1),.SD,.SDcols=!c("prev_dementia","prev_parkinson","prev_motor_neuron_disease","prev_IHD","prev_stroke")]
-# "prev_stroke"; out %>% nrow
+factor_vars <- colnames(out)[unlist(lapply(colnames(out),function(x){is.factor(out[[x]])}))]
 
-
-## Exclude missing in smoking/alcohol
-
-out<-out[smoking_status_0 != 9]
-# "smoking prefer not to answer"; out %>% nrow
-
-out<-out[alcohol_status_0 != 9]
-# "alcohol prefer not to answer"; out %>% nrow
-
-
-
-out.label<-out.label[!grep("prev_",variable),,]
-
-vars.surv <- sapply(strsplit(varlist$Event, "_"), `[[`, 1)
+vars.surv <- sapply(strsplit(varlist$Outcomes, "_"), `[[`, 1)
 
 ui <- navbarPage("UK biobank",
+                 tabPanel("N", icon = icon("table"),
+                          sidebarLayout(
+                            sidebarPanel(
+                              h5("N count for flow chart")
+                            ),
+                            mainPanel(
+                              withLoader(DTOutput("FlowChart"), type="html", loader="loader6"),
+                            )
+                          )
+                          
+                 ),
                  tabPanel("Data", icon = icon("table"),
                           sidebarLayout(
                             sidebarPanel(
@@ -129,6 +229,36 @@ ui <- navbarPage("UK biobank",
                             )
                             
                  ),
+                 tabPanel("Defined Table 1", icon = icon("percentage"),
+                          sidebarLayout(
+                            sidebarPanel(
+                              radioButtons("def_table1_strata", "Column by", c("MetS_ATP2005_0","APOEe4"), selected = "MetS_ATP2005_0", inline = T),
+                            ),
+                            mainPanel(
+                              withLoader(DTOutput("def_table1"), type="html", loader="loader6"),
+                              wellPanel(
+                                h5("Normal continuous variables  are summarized with Mean (SD) and t-test(2 groups) or ANOVA(> 2 groups)"),
+                                h5("Non-normal continuous variables are summarized with median [IQR or min,max] and kruskal-wallis test"),
+                                h5("Categorical variables  are summarized with table")
+                              )
+                            )
+                          )
+                          
+                 ),
+                 
+                 tabPanel("Defined Table 2", icon = icon("list-alt"),
+                          sidebarLayout(
+                            sidebarPanel(
+                              
+                            ),
+                            mainPanel(
+                              withLoader(DTOutput("def_table2"), type="html", loader="loader6"),
+                              
+                            )
+                          )
+
+                 ),
+                 
                  navbarMenu("Plot", icon = icon("bar-chart-o"),
                             tabPanel("Basic plot",
                                      sidebarLayout(
@@ -197,10 +327,10 @@ ui <- navbarPage("UK biobank",
                  tabPanel("Subgroup analysis",
                           sidebarLayout(
                             sidebarPanel(
-                              selectInput("dep_tbsub", "Outcome", choices = varlist$Event, selected = varlist$Event[1]),
-                              selectInput("group_tbsub", "Main variable", varlist$MetS, varlist$MetS[1]),
-                              selectInput("subgroup_tbsub", "Subgroup to analyze", intersect(c(varlist$Base, varlist$Medication, varlist$Cognition), factor_vars), "sex", multiple = T),
-                              selectInput("cov_tbsub", "Additional covariates", varlist[4:6], selected = NULL, multiple = T),
+                              selectInput("dep_tbsub", "Outcome", choices = varlist$Outcomes, selected = varlist$Outcomes[1]),
+                              selectInput("group_tbsub", "Main variable", varlist$Exposure, varlist$Exposure[1]),
+                              selectInput("subgroup_tbsub", "Subgroup to analyze", intersect(varlist[4:5], factor_vars), "sex", multiple = T),
+                              selectInput("cov_tbsub", "Additional covariates", varlist[4:5], selected = NULL, multiple = T),
                               actionBttn("action_tbsub", "Run subgroup analysis")
                             ),
                             mainPanel(
@@ -225,14 +355,13 @@ ui <- navbarPage("UK biobank",
                  tabPanel("Spline",
                           sidebarLayout(
                             sidebarPanel(
-                              selectInput("dep_coxadd", "Outcome", choices = varlist$Event, selected = varlist$Event[1]),
+                              selectInput("dep_coxadd", "Outcome", choices = varlist$Outcomes, selected = varlist$Outcomes[1]),
                               radioButtons("cov_coxadd", "Cubic regression spline", c("CRP_0"), selected = "CRP_0", inline = T),
-                              selectInput("addcov_coxadd", "Additional Covariate: no spline", choices = varlist[4:6], selected = NULL, multiple = T),
+                              selectInput("addcov_coxadd", "Additional Covariate: no spline", choices = varlist[c(1,4,5)], selected = NULL, multiple = T),
                               checkboxInput("check_subset_coxadd", "Subset data"),
                               uiOutput("subset_var_coxadd"),
                               uiOutput("subset_val_coxadd"),
                               actionBttn("action_coxadd", "Run GAM analysis")
-                              
                             ),
                             mainPanel(
                               checkboxInput("hr_coxadd", "Original scale(HR, OR)", F),
@@ -454,6 +583,9 @@ server <- function(input, output, session) {
     )
   })
   
+  output$FlowChart <- renderDT({
+    datatable(Nflowchart, options = c(list(paging = FALSE)))
+  })
   
   
   out_tb1 <- callModule(tb1module2, "tb1", data = data, data_label=data.label, data_varStruct = NULL, nfactor.limit = nfactor.limit, showAllLevels = T)
@@ -474,7 +606,111 @@ server <- function(input, output, session) {
     return(out.tb1)
   })
   
-  out_linear <- callModule(regressModule2, "linear", data = data, data_label = data.label, data_varStruct = reactive(varlist[names(varlist)[c(2, 3, 1, 4)]]), nfactor.limit = nfactor.limit, default.unires = F)
+  
+  
+  # out_def_tb1 <- callModule(tb1module2, "tb1", data = data, data_label=data.label, data_varStruct = NULL, nfactor.limit = nfactor.limit, showAllLevels = F)
+  
+  output$def_table1 <- renderDT({
+  
+      def_tb1<-CreateTableOne2(data = out,
+                          vars = unlist(varlist[names(varlist)[c(1,2,4,5)]]),
+                          strata = input$def_table1_strata,
+                          factorVars = factor_vars,
+                          Labels = T,
+                          labeldata=out.label,
+                          includeNA = F,
+                          showAllLevels = F)
+      out.def_tb1<-datatable(def_tb1,
+                             options = c(list(columnDefs = list(list(visible=FALSE, targets= which(colnames(def_tb1) %in% c("test","sig")))),
+                                              paging = FALSE),
+                                         list(scrollX = TRUE))
+                             )
+      if ("sig" %in% colnames(def_tb1)){
+        out.def_tb1 = out.def_tb1 %>% formatStyle("sig", target = 'row' ,backgroundColor = styleEqual("**", 'yellow'))
+      }
+      
+    return(out.def_tb1)
+  })
+  
+  output$def_table2 <- renderDT({
+    
+    
+    out.cox<-out
+    
+    for(v in unlist(varlist[2])){
+      out.cox[[v]]<-ifelse(out.cox[[v]]=="1",1,0)
+    }
+    
+    # varlist[2]
+    # $Outcomes
+    # [1] "dementia_all_outcome"       "dementia_alzheimer_outcome" "dementia_vascular_outcome"  "stroke_all_outcome"         "stroke_ischaemic_outcome"  
+    # [6] "stroke_haemorrhage_outcome" "MI_all_outcome"             "death"    
+    
+    fit<-coxph(Surv(dementia_all_day, dementia_all_outcome) ~
+                 age + sex + townsend_deprivation_index + education_college_university_0 + smoking_status_0 + alcohol_status_0 + 
+                 MET_activity + HMG_CoA_reductase_inhibitors_0 + ANTITHROMBOTIC_AGENTS_0 + CRP_0, data = out.cox, model=TRUE) 
+    fit.i<-cox2.display(fit)$table
+    def_tb2<-fit.i
+    tr<-t(c("","","","")); rownames(tr)<-c("All-cause dementia")
+    def_tb2<-rbind(tr,def_tb2)
+    
+    fit<-coxph(Surv(dementia_alzheimer_day, dementia_alzheimer_outcome) ~
+                 age + sex + townsend_deprivation_index + education_college_university_0 + smoking_status_0 + alcohol_status_0 + 
+                 MET_activity + HMG_CoA_reductase_inhibitors_0 + ANTITHROMBOTIC_AGENTS_0 + CRP_0, data = out.cox, model=TRUE) 
+    fit.i<-cox2.display(fit)$table
+    tr<-t(c("","","","")); rownames(tr)<-c("Alzheimer's dementia")
+    def_tb2<-rbind(def_tb2,tr,fit.i)
+    
+    fit<-coxph(Surv(dementia_vascular_day, dementia_vascular_outcome) ~
+                 age + sex + townsend_deprivation_index + education_college_university_0 + smoking_status_0 + alcohol_status_0 + 
+                 MET_activity + HMG_CoA_reductase_inhibitors_0 + ANTITHROMBOTIC_AGENTS_0 + CRP_0, data = out.cox, model=TRUE) 
+    fit.i<-cox2.display(fit)$table
+    tr<-t(c("","","","")); rownames(tr)<-c("Vascular dementia")
+    def_tb2<-rbind(def_tb2,tr,fit.i)
+    
+    fit<-coxph(Surv(stroke_all_day, stroke_all_outcome) ~
+                 age + sex + townsend_deprivation_index + education_college_university_0 + smoking_status_0 + alcohol_status_0 + 
+                 MET_activity + HMG_CoA_reductase_inhibitors_0 + ANTITHROMBOTIC_AGENTS_0 + CRP_0, data = out.cox, model=TRUE) 
+    fit.i<-cox2.display(fit)$table
+    tr<-t(c("","","","")); rownames(tr)<-c("All-cause stroke")
+    def_tb2<-rbind(def_tb2,tr,fit.i)
+    
+    fit<-coxph(Surv(stroke_ischaemic_day, stroke_ischaemic_outcome) ~
+                 age + sex + townsend_deprivation_index + education_college_university_0 + smoking_status_0 + alcohol_status_0 + 
+                 MET_activity + HMG_CoA_reductase_inhibitors_0 + ANTITHROMBOTIC_AGENTS_0 + CRP_0, data = out.cox, model=TRUE) 
+    fit.i<-cox2.display(fit)$table
+    tr<-t(c("","","","")); rownames(tr)<-c("Ischaemic stroke")
+    def_tb2<-rbind(def_tb2,tr,fit.i)
+    
+    fit<-coxph(Surv(stroke_haemorrhage_day, stroke_haemorrhage_outcome) ~
+                 age + sex + townsend_deprivation_index + education_college_university_0 + smoking_status_0 + alcohol_status_0 + 
+                 MET_activity + HMG_CoA_reductase_inhibitors_0 + ANTITHROMBOTIC_AGENTS_0 + CRP_0, data = out.cox, model=TRUE) 
+    fit.i<-cox2.display(fit)$table
+    tr<-t(c("","","","")); rownames(tr)<-c("Haemorrhage stroke")
+    def_tb2<-rbind(def_tb2,tr,fit.i)
+    
+    fit<-coxph(Surv(MI_all_day, MI_all_outcome) ~
+                 age + sex + townsend_deprivation_index + education_college_university_0 + smoking_status_0 + alcohol_status_0 + 
+                 MET_activity + HMG_CoA_reductase_inhibitors_0 + ANTITHROMBOTIC_AGENTS_0 + CRP_0, data = out.cox, model=TRUE) 
+    fit.i<-cox2.display(fit)$table
+    tr<-t(c("","","","")); rownames(tr)<-c("Myocardial Infarction")
+    def_tb2<-rbind(def_tb2,tr,fit.i)
+    
+    fit<-coxph(Surv(death_day, death) ~
+                 age + sex + townsend_deprivation_index + education_college_university_0 + smoking_status_0 + alcohol_status_0 + 
+                 MET_activity + HMG_CoA_reductase_inhibitors_0 + ANTITHROMBOTIC_AGENTS_0 + CRP_0, data = out.cox, model=TRUE) 
+    fit.i<-cox2.display(fit)$table
+    tr<-t(c("","","","")); rownames(tr)<-c("Death")
+    def_tb2<-rbind(def_tb2,tr,fit.i)
+    
+    out.def_tb2 <- datatable(def_tb2,options=c(list(paging=FALSE))) %>% formatStyle("crude HR(95%CI)", target = 'row',
+                                                                                    fontWeight = styleEqual("", "bold"),
+                                                                                    backgroundColor = styleEqual("", "lightblue"))
+    
+    return(out.def_tb2)
+  })
+  
+  out_linear <- callModule(regressModule2, "linear", data = data, data_label = data.label, data_varStruct = reactive(varlist[names(varlist)[c(2, 3, 1, 4, 5)]]), nfactor.limit = nfactor.limit, default.unires = F)
   
   output$lineartable <- renderDT({
     hide = which(colnames(out_linear()$table) == "sig")
@@ -491,7 +727,7 @@ server <- function(input, output, session) {
     paste("<b>", out_linear()$warning, "</b>")
   })
   
-  out_logistic <- callModule(logisticModule2, "logistic", data = data, data_label = data.label, data_varStruct = reactive(varlist[names(varlist)[c(1, 4, 2, 3)]]), nfactor.limit = nfactor.limit, default.unires = F)
+  out_logistic <- callModule(logisticModule2, "logistic", data = data, data_label = data.label, data_varStruct = reactive(varlist[names(varlist)[c(1, 4, 2, 3, 5)]]), nfactor.limit = nfactor.limit, default.unires = F)
   
   output$logistictable <- renderDT({
     hide = which(colnames(out_logistic()$table) == "sig")
@@ -509,7 +745,7 @@ server <- function(input, output, session) {
     return(data())
   })
   
-  out_cox <- callModule(coxModule, "cox", data = data.cox, data_label = data.label, data_varStruct = reactive(varlist[names(varlist)[c(2, 3, 1, 4)]]), default.unires = F, nfactor.limit = nfactor.limit)
+  out_cox <- callModule(coxModule, "cox", data = data.cox, data_label = data.label, data_varStruct = reactive(varlist[names(varlist)[c(2, 3, 1, 4, 5)]]), default.unires = F, nfactor.limit = nfactor.limit)
   
   output$coxtable <- renderDT({
     hide = which(colnames(out_cox()$table) == c("sig"))
@@ -522,13 +758,13 @@ server <- function(input, output, session) {
   })
   
   
-  out_ggpairs <- callModule(ggpairsModule2, "ggpairs", data = data, data_label = data.label, data_varStruct = reactive(varlist[names(varlist)[c(2, 3, 1, 4)]]), nfactor.limit = nfactor.limit)
+  out_ggpairs <- callModule(ggpairsModule2, "ggpairs", data = data, data_label = data.label, data_varStruct = reactive(varlist[names(varlist)[c(2, 3, 1, 4, 5)]]), nfactor.limit = nfactor.limit)
   
   output$ggpairs_plot <- renderPlot({
     print(out_ggpairs())
   })
   
-  out_scatter <- scatterServer("scatter", data = data, data_label = data.label, data_varStruct = reactive(varlist[names(varlist)[c(2, 3, 1, 4)]]), nfactor.limit = nfactor.limit)
+  out_scatter <- scatterServer("scatter", data = data, data_label = data.label, data_varStruct = reactive(varlist[names(varlist)[c(2, 3, 1, 4, 5)]]), nfactor.limit = nfactor.limit)
   
   output$scatter_plot <- renderPlot({
     print(out_scatter())
@@ -538,14 +774,14 @@ server <- function(input, output, session) {
     return(data())
   })
   
-  out_kaplan <- callModule(kaplanModule, "kaplan", data = data.kap, data_label = data.label, data_varStruct = reactive(varlist[names(varlist)[c(2, 3, 1, 4)]]), nfactor.limit = nfactor.limit)
+  out_kaplan <- callModule(kaplanModule, "kaplan", data = data.kap, data_label = data.label, data_varStruct = reactive(varlist[names(varlist)[c(2, 3, 1, 4, 5)]]), nfactor.limit = nfactor.limit)
   
   
   output$kaplan_plot <- renderPlot({
     print(out_kaplan())
   })
   
-  out_roc <- callModule(rocModule, "roc", data = data, data_label = data.label, data_varStruct = reactive(varlist[names(varlist)[c(1, 4, 2, 3)]]), nfactor.limit = nfactor.limit)
+  out_roc <- callModule(rocModule, "roc", data = data, data_label = data.label, data_varStruct = reactive(varlist[names(varlist)[c(1, 4, 2, 3, 5)]]), nfactor.limit = nfactor.limit)
   
   output$plot_roc <- renderPlot({
     print(out_roc()$plot)
@@ -561,7 +797,7 @@ server <- function(input, output, session) {
     return(data())
   })
   
-  out_timeroc <- callModule(timerocModule, "timeroc", data = data.timeroc, data_label = data.label, data_varStruct = reactive(varlist[names(varlist)[c(2, 3, 1, 4)]]), nfactor.limit = nfactor.limit)
+  out_timeroc <- callModule(timerocModule, "timeroc", data = data.timeroc, data_label = data.label, data_varStruct = reactive(varlist[names(varlist)[c(2, 3, 1, 4, 5)]]), nfactor.limit = nfactor.limit)
   
   output$plot_timeroc <- renderPlot({
     print(out_timeroc()$plot)
@@ -586,7 +822,7 @@ server <- function(input, output, session) {
     
     
     var.event <- input$dep_tbsub
-    var.day <- varlist$Time[which(varlist$Event == var.event)]
+    var.day <- varlist$Time[which(varlist$Outcomes == var.event)]
     
     #data <- data[!( get(var.day) <= input$year_tbsub[1]) & !(is.na(get(group.tbsub())))]
     
@@ -646,10 +882,7 @@ server <- function(input, output, session) {
               )) 
     
   })
-  
-  
-  
-  
+
   
   output$forest <- downloadHandler(
     filename =  function() {
@@ -713,7 +946,7 @@ server <- function(input, output, session) {
     label <- data.label()
     
     var.event <- input$dep_coxadd
-    var.day <- varlist$Time[which(varlist$Event == var.event)]
+    var.day <- varlist$Time[which(varlist$Outcomes == var.event)]
     data[[var.event]] <- as.numeric(as.vector(data[[var.event]]))
     
     forms.cox <- as.formula(paste(var.day, " ~ s(", input$cov_coxadd, ", bs='cr')", sep=""))

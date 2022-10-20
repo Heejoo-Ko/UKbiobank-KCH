@@ -1,4 +1,4 @@
-library(data.table);library(magrittr);library(parallel);library(fst);library(stats);library(imputeTS);library(readxl);library(readr)
+library(data.table);library(magrittr);library(parallel);library(fst);library(stats);library(imputeTS);library(readxl);library(readr);library(matrixStats)
 setDTthreads(0)
 
 # setwd("/home/js/UKbiobank/UKbiobank2022")
@@ -8,12 +8,10 @@ setwd("/home/heejooko/ShinyApps/UKbiobank")
 pheno<-as.data.table(read_tsv(file='merged_pheno_v2.txt'))
 
 
-pheno %>% names
-sapply(pheno,class)
-
-pheno$APOE_status %>% as.factor %>% summary
-pheno$IID_chkim %>% unique %>% length
-
+# pheno %>% names
+# sapply(pheno,class)
+# pheno$APOE_status %>% as.factor %>% summary
+# pheno$IID_chkim %>% unique %>% length
 
 
 setwd("/home/heejooko/UKbiobank")
@@ -32,6 +30,7 @@ a<-data.table()
 # _3	First repeat imaging visit (2019+)
 
 #Population characteristics------------------------------------------------------------------
+
 a$ID<-mydata$f.eid
 a$age<-mydata$f.21022.0.0 #age at recruitment [years]
 a$sex<-ifelse(mydata$f.31.0.0==0,"F","M")
@@ -538,63 +537,6 @@ Cog$PM_fu_time<-mydata[,..myCol][,lapply(.SD,function(x){ifelse(x==-1,NA,x)}),.S
 
 # Cog$ID<-a$ID
 
-#Brain MRI------------------------------------------------------------------
-
-# Diffusion brain MRI
-# 134 dMRI skeleton	432
-# 135 dMRI weighted means	243
-
-# T1 structural brain MRI	26
-# 1101 Regional grey matter volumes (FAST)	139
-# 1102 Subcortical volumes (FIRST)	14
-
-# T1 structural brain MRI
-# 190 Freesurfer ASEG	99
-# 195 Freesurfer BA exvivo	84
-# 197 Freesurfer a2009s	444
-# 196 Freesurfer DKT	186
-# 194 Freesurfer desikan gw	70
-# 193 Freesurfer desikan pial	66
-# 192 Freesurfer desikan white	202
-# 191 Freesurfer subsegmentation	121
-
-categorynames<-c("dMRI_skeleton","dMRI_weighted_means",
-                 "T1_Regional_grey_matter_volumes_FAST","T1_Subcortical_volumes_FIRST",
-                 "T1_Freesurfer_ASEG","T1_Freesurfer_BA_exvivo","T1_Freesurfer_a2009s","T1_Freesurfer_DKT",
-                 "T1_Freesurfer_desikan_gw","T1_Freesurfer_desikan_pial","T1_Freesurfer_desikan_white","T1_Freesurfer_subsegmentation")
-
-setwd("/home/heejooko/ShinyApps/UKbiobank")
-
-mrivars <- excel_sheets("brain mri variables.xlsx") %>% 
-  lapply(function(x){read_excel("brain mri variables.xlsx",sheet=x)})
-
-#5:12 데이터 누락. 원래는 1:12까지 all. -> 2022 데이터로 해결
-for(i in 1:12){
-  for(j in 2:3){
-    mri_set_fieldcodes<-paste0("f.",mrivars[[i]]$Field_ID,".",j,".0")
-    mri_set_colnames<-paste0(categorynames[i],"_",mrivars[[i]]$Description,"_",j)
-    
-    mri_set<-sapply(mri_set_fieldcodes,function(v){mydata[[v]]})
-    mri_set<-as.data.table(mri_set)
-    colnames(mri_set)<-mri_set_colnames
-    
-    leftlocations<-grep("left",mri_set_colnames)
-    avgcols<-sapply(leftlocations,
-                    function(ll){
-                      rl<-grep(gsub("left","right",mri_set_colnames[ll]),mri_set_colnames)
-                      temp_avgcol<-(mri_set[[ll]]+mri_set[[rl]])/2
-                      temp_avgcol
-                    })
-    colnames(avgcols)<-gsub("left","avg",mri_set_colnames[leftlocations])
-    
-    mri_set<-cbind(mri_set,avgcols)
-    
-    a<-cbind(a,mri_set) 
-  }
-}
-
-
-
 
 #Biomarkers--------------------------------------------------------------------
 #IGF-1 [nmol/L]
@@ -684,8 +626,9 @@ a$vitD_1<-mydata$f.30890.1.0
 
 
 # quantile(a$CRP_0,probs = c(0,.25, .33,.5, .67,.75,1),na.rm=T)
-a$CRP_cat_0<-ifelse(a$CRP_0<0.65,"<0.65",ifelse(a$CRP_0<=2.75,"0.65 ~ 2.75",ifelse(a$CRP_0>2.75,">2.75",NA)))
-a$CRP_cat_1<-ifelse(a$CRP_1<0.65,"<0.65",ifelse(a$CRP_1<=2.75,"0.65 ~ 2.75",ifelse(a$CRP_1>2.75,">2.75",NA)))
+
+a$CRP_cat_0<-ifelse(a$CRP_0<0.65,"<0.65",ifelse(a$CRP_0<=2.75,"0.65~2.75",ifelse(a$CRP_0>2.75,">2.75",NA)))
+a$CRP_cat_1<-ifelse(a$CRP_1<0.65,"<0.65",ifelse(a$CRP_1<=2.75,"0.65~2.75",ifelse(a$CRP_1>2.75,">2.75",NA)))
 
 
 #Medications------------------------------------------------------------------
@@ -706,6 +649,7 @@ myCol<-colnames(mydata)[grep("f.20003.3.",colnames(mydata))]
 a$medication_3<-mydata[,..myCol][, do.call(paste, c(.SD, sep = "_")),]
 a$medication_3<-lapply(a$medication_3,function(x){gsub("_NA","",x)}) %>% unlist
 
+setwd("/home/heejooko/ShinyApps/UKbiobank")
 medication_excel <- as.data.table(read_excel("ukb_read_match_20220823.xlsx",sheet="UKBdrugmatch_160216"))
 
 codelist<-list()
@@ -764,15 +708,14 @@ codelist$DRUGS_USED_IN_DIABETES<-unique(medication_excel[ATC3tx=="DRUGS USED IN 
 ## CALCIUM CHANNEL BLOCKERS
 ## BETA BLOCKING AGENTS
 ## ANTIHYPERTENSIVES
-
 codelist$HTN_DRUGS<-unique(medication_excel[grepl("DIURETICS|AGENTS ACTING ON THE RENIN-ANGIOTENSIN SYSTEM|CALCIUM CHANNEL BLOCKERS|BETA BLOCKING AGENTS|ANTIHYPERTENSIVES",ATC3tx),UKBdrugID,])
 
 
 for(i in 1:length(codelist)){
-  a[[paste0(names(codelist)[i],"_0")]]<-grepl(paste(unlist(codelist[i]),collapse="|"),a$medication_0) %>% as.integer
-  a[[paste0(names(codelist)[i],"_1")]]<-grepl(paste(unlist(codelist[i]),collapse="|"),a$medication_1) %>% as.integer
-  a[[paste0(names(codelist)[i],"_2")]]<-grepl(paste(unlist(codelist[i]),collapse="|"),a$medication_2) %>% as.integer
-  a[[paste0(names(codelist)[i],"_3")]]<-grepl(paste(unlist(codelist[i]),collapse="|"),a$medication_3) %>% as.integer
+  a[,paste0(names(codelist)[i],"_0"):=as.integer(grepl(paste(unlist(codelist[i]),collapse="|"),a$medication_0)),]
+  a[,paste0(names(codelist)[i],"_1"):=as.integer(grepl(paste(unlist(codelist[i]),collapse="|"),a$medication_1)),]
+  a[,paste0(names(codelist)[i],"_2"):=as.integer(grepl(paste(unlist(codelist[i]),collapse="|"),a$medication_2)),]
+  a[,paste0(names(codelist)[i],"_3"):=as.integer(grepl(paste(unlist(codelist[i]),collapse="|"),a$medication_3)),]
 }
 
 medication_vars<-a[,.SD,.SDcols=c((ncol(a)-length(codelist)*4+1):ncol(a))] %>% colnames
@@ -924,6 +867,87 @@ days<-as.data.table(days)
 # days$ID<-a$ID
 
 
+#Brain MRI------------------------------------------------------------------
+
+# Diffusion brain MRI
+# 134 dMRI skeleton	432
+# 135 dMRI weighted means	243
+
+# T1 structural brain MRI	26
+# 1101 Regional grey matter volumes (FAST)	139
+# 1102 Subcortical volumes (FIRST)	14
+
+# T1 structural brain MRI
+# 190 Freesurfer ASEG	99
+# volume val: 26518, 26556, 26587, 26553, 26584
+
+# 195 Freesurfer BA exvivo	84
+# 197 Freesurfer a2009s	444
+# 196 Freesurfer DKT	186
+# 194 Freesurfer desikan gw	70
+# 193 Freesurfer desikan pial	66
+# 192 Freesurfer desikan white	202
+# 191 Freesurfer subsegmentation	121
+
+# 110 T1 structural brain MRI
+# volume val: 25009, 25005, 25001, 25003, 25007
+
+
+categorynames<-c("dMRI_skeleton","dMRI_weighted_means",
+                 "T1_Regional_grey_matter_volumes_FAST","T1_Subcortical_volumes_FIRST",
+                 "T1_Freesurfer_ASEG","T1_Freesurfer_BA_exvivo","T1_Freesurfer_a2009s","T1_Freesurfer_DKT",
+                 "T1_Freesurfer_desikan_gw","T1_Freesurfer_desikan_pial","T1_Freesurfer_desikan_white","T1_Freesurfer_subsegmentation",
+                 "T1_structural_brain_MRI")
+
+setwd("/home/heejooko/ShinyApps/UKbiobank")
+
+mrivars <- excel_sheets("brain mri variables.xlsx") %>% 
+  lapply(function(x){read_excel("brain mri variables.xlsx",sheet=x)})
+
+#5:12 데이터 누락. 원래는 1:12까지 all. -> 2022 데이터로 해결
+for(i in 1:13){
+  for(j in 2:3){
+    mri_set_fieldcodes<-paste0("f.",mrivars[[i]]$Field_ID,".",j,".0")
+    mri_set_colnames<-paste0(categorynames[i],"_",mrivars[[i]]$Description,"_",j)
+    
+    mri_set<-sapply(mri_set_fieldcodes,function(v){mydata[[v]]})
+    mri_set<-as.data.table(mri_set)
+    colnames(mri_set)<-mri_set_colnames
+    
+    leftlocations<-grep("left",mri_set_colnames)
+    if(length(leftlocations)>0){
+      avgcols<-sapply(leftlocations,
+                      function(ll){
+                        rl<-grep(gsub("left","right",mri_set_colnames[ll]),mri_set_colnames)
+                        temp_avgcol<-(mri_set[[ll]]+mri_set[[rl]])/2
+                        temp_avgcol
+                      })
+      colnames(avgcols)<-gsub("left","avg",mri_set_colnames[leftlocations])
+      mri_set<-cbind(mri_set,avgcols)
+    }
+    
+    a<-cbind(a,mri_set) 
+  }
+}
+
+dataout_MRI<-data.table()
+dataout_MRI$ID<-a$ID
+dataout_MRI<-c(dataout_MRI,a[,.SD,.SDcols=grep("T1_structural_brain_MRI",names(a))])
+
+volumevals<-c(grep("Volume_of_Cerebellum_White_Matter_left_hemisphere",names(a),value=T),
+              grep("Volume_of_Cerebellum_White_Matter_right_hemisphere",names(a),value=T),
+              grep("Volume_of_CerebralWhiteMatter_left_hemisphere",names(a),value=T),
+              grep("Volume_of_CerebralWhiteMatter_right_hemisphere",names(a),value=T),
+              grep("Volume_of_TotalGray_whole_brain",names(a),value=T))
+a[,Total_brain_volume_2:=rowSums(.SD),.SDcols=grep("_2",volumevals,value=T)]
+a[,Total_brain_volume_3:=rowSums(.SD),.SDcols=grep("_3",volumevals,value=T)]
+
+dataout_MRI<-c(dataout_MRI,a[,.SD,.SDcols=grep("Total_brain_volume",names(a))])
+dataout_MRI<-c(dataout_MRI,a[,.SD,.SDcols=grep("T1_Regional_grey_matter_volumes_FAST",names(a))])
+
+write.csv(dataout_MRI,"MRI_request_20221018.csv")
+
+
 # MERGE a, days, Cog
 a <- cbind(a,days,Cog)
 
@@ -939,7 +963,41 @@ apheno[,APOEe2:=as.factor(ifelse(APOE_status %in% c("e1/e4","e3/e3","e3/e4","e4/
                                         ifelse(APOE_status=="e2/e2",2,NA))))]
 apheno<-apheno[,.SD,.SDcols=!'APOE_status']
 
-a<-merge(a,apheno,all=F,by="ID")
+a<-merge(a,apheno,all.x=T,by="ID")
+
+#new variable for table 1,2
+
+a$Age_cat3_0<-as.factor(ifelse(a$age<50,"<50",
+                           ifelse(a$age>=50 & a$age<65,"50~65",
+                                  ifelse(a$age>=65,">=65",NA))))
+
+# quantile(a$CRP_0,probs = c((0:10)/10),na.rm=T)
+a$CRP_cat10_0<-as.factor(ifelse(a$CRP_0<0.36,"<0.36",
+                              ifelse(a$CRP_0<=0.55,"0.36~0.55",
+                                     ifelse(a$CRP_0<=0.77,"0.55~0.77",
+                                            ifelse(a$CRP_0<=1.02,"0.77~1.02",
+                                                   ifelse(a$CRP_0<=1.33,"1.02~1.33",
+                                                          ifelse(a$CRP_0<=1.75,"1.33~1.75",
+                                                                 ifelse(a$CRP_0<=2.34,"1.75~2.34",
+                                                                        ifelse(a$CRP_0<=3.33,"2.34~3.33",
+                                                                               ifelse(a$CRP_0<=5.54,"3.33~5.54",
+                                                                                      ifelse(a$CRP_0>5.54,">5.54",NA)))))))))))
+a$CRP_cat10_0<-factor(a$CRP_cat10_0,levels=c("<0.36","0.36~0.55","0.55~0.77","0.77~1.02","1.02~1.33",
+                                                 "1.33~1.75","1.75~2.34","2.34~3.33","3.33~5.54",">5.54"))
+                        
+a$CRP_cat5_0<-as.factor(ifelse(a$CRP_0<0.55,"<0.55",
+                               ifelse(a$CRP_0<1.02,"0.55~1.02",
+                                      ifelse(a$CRP_0<1.75,"1.02~1.75",
+                                             ifelse(a$CRP_0<3.33,"1.75~3.33",
+                                                    ifelse(a$CRP_0>=3.33,">=3.33",NA))))))
+a$CRP_cat5_0<-factor(a$CRP_cat5_0,levels=c("<0.55","0.55~1.02","1.02~1.75","1.75~3.33",">=3.33"))
+
+a$CRP_cat_0<-factor(a$CRP_cat_0,levels=c("<0.65","0.65~2.75",">2.75"))
+a$CRP_cat_1<-factor(a$CRP_cat_1,levels=c("<0.65","0.65~2.75",">2.75"))
+
+
+a$stroke_haemorrhage_outcome<-ifelse(a$stroke_intracerebral_haemorrhage_outcome==1 | a$stroke_subarachnoid_haemorrhage_outcome==1,1,0)
+a$stroke_haemorrhage_day<-rowMins(cbind(days$stroke_intracerebral_haemorrhage_day,days$stroke_subarachnoid_haemorrhage_day),na.rm=T)
 
 #Exclusion criteria----------------------------------------------------------------------------------
 #20002 Non-cancer illness code, self-reported
@@ -960,10 +1018,12 @@ a$prev_stroke<-a$stroke_diagnosed_0
 # a[,lapply(.SD,function(x){summary(as.factor(x))}),.SDcols=c("prev_dementia","prev_parkinson","prev_motor_neuron_disease","prev_IHD","prev_stroke")]
 
 #Data Export----------------------------------------------------------------------------------
+
+
 varlist <- list(
   MetS = MetS_vars,
-  Event = c(gsub("_day","_outcome",colnames(days)[1:(ncol(days)-1)]),"death"),
-  Time = colnames(days),
+  Event = c(gsub("_day","_outcome",colnames(days)[1:(ncol(days)-1)]),"death","stroke_haemorrhage_outcome"),
+  Time = c(colnames(days),"stroke_haemorrhage_day"),
   Base = c("age", "sex", "townsend_deprivation_index", paste0("bmi_",0:3),
            "smoking_status_0","smoking_status_1","smoking_status_2","smoking_status_3",
            "smoking_stop_age",paste0("smoking_packyears_",0:3),
@@ -1017,7 +1077,7 @@ varlist <- list(
            "tot_protein_0","tot_protein_1","urate_0","urate_1",                                       
            "urea_0","urea_1","vitD_0","vitD_1","CRP_cat_0","CRP_cat_1",
            "prev_dementia","prev_parkinson","prev_motor_neuron_disease","prev_IHD","prev_stroke",
-           "APOEe4","APOEe2"
+           "APOEe4","APOEe2","Age_cat3_0","CRP_cat5_0","CRP_cat10_0"
   ),
   MRI = grep(pattern='dMRI_|T1_', x=names(a), value = T),
   Medication = medication_vars,
@@ -1054,12 +1114,13 @@ factor_vars<-c("sex", "smoking_status_0","smoking_status_1","smoking_status_2","
                paste0("education_NVQ_HND_HNC_",0:3),
                paste0("education_other_professional_",0:3),
                paste0("education_school_never_",0:2),
-               events,"ethnicity","ethnicity_group",
+               events,"stroke_haemorrhage_outcome","ethnicity","ethnicity_group",
                MetS_vars,
                "CRP_cat_0","CRP_cat_1","IPAQ_activity_group",
                "prev_dementia","prev_parkinson","prev_motor_neuron_disease","prev_IHD","prev_stroke",
                medication_vars,
-               "FI_fu","TM_fu","PM_fu","APOEe4","APOEe2")
+               "FI_fu","TM_fu","PM_fu","APOEe4","APOEe2",
+               "Age_cat3_0","CRP_cat5_0","CRP_cat10_0")
 out[,(factor_vars):=lapply(.SD,as.factor),.SDcols=factor_vars]
 
 # lapply(a[,.SD,.SDcols=grep("_date",names(a),value=T)],function(x){max(x,na.rm=T)})
@@ -1068,7 +1129,7 @@ out.label <- jstable::mk.lev(out)
 
 # label.main[variable == " ", `:=`(var_label = " ", val_label = c("","",""))]
 
-fst::write_fst(out, "data221010.fst")
+fst::write_fst(out, "data221020.fst")
 saveRDS(list(factor_vars = factor_vars, label= out.label, varlist = varlist), "info.RDS")
 
 #The other study data----------------------------------------------------------------------------------
