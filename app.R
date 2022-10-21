@@ -1,7 +1,8 @@
 options(shiny.sanitize.errors=F)
 library(shiny);library(shinycustomloader);library(ggpubr);library(survival);library(jsmodule);library(DT);library(survival)
 #source("global.R")
-library(data.table);library(magrittr);library(jstable);library(forestplot);library(shinyWidgets);library(officer)
+library(data.table);library(magrittr);library(jstable);library(forestplot);library(shinyWidgets);library(officer);library(writexl)
+
 nfactor.limit <- 20  ## For module
 ### Load info
 setwd("/home/heejooko/ShinyApps/UKbiobank")
@@ -49,16 +50,6 @@ for(v in colnames(out.final)){
   }
 }
 
-for(v in c("dementia_all_day","stroke_all_day","MI_all_day")){
-  orN<-nrow(out.final)
-  out.final<-out.final[get(v)>0,.SD,]
-  modN<-nrow(out.final)
-  if(modN!=orN){
-    Nflowchart<-rbind(Nflowchart,
-                      data.frame(varname=paste0(v," <0"),excluded=(orN-modN),N=modN))
-  }
-}
-
 for(v in c("smoking_status_0","alcohol_status_0")){
   orN<-nrow(out.final)
   
@@ -71,6 +62,21 @@ for(v in c("smoking_status_0","alcohol_status_0")){
                       data.frame(varname=paste0(v," prefer not to answer"),excluded=(orN-modN),N=modN))
   }
 }
+
+for(v in c("dementia_all_day","stroke_all_day","MI_all_day")){
+  orN<-nrow(out.final)
+  out.final<-out.final[get(v)>0,.SD,]
+  modN<-nrow(out.final)
+  if(modN!=orN){
+    Nflowchart<-rbind(Nflowchart,
+                      data.frame(varname=paste0(v," <0"),excluded=(orN-modN),N=modN))
+  }
+}
+
+out.final %>% names
+varlist_final
+out.final$Age_cat3_0 %>% levels
+out.final$CRP_cat10_0 %>% levels
 
 varlist<-varlist_final
 out<-out.final
@@ -236,11 +242,13 @@ ui <- navbarPage("UK biobank",
                             ),
                             mainPanel(
                               withLoader(DTOutput("def_table1"), type="html", loader="loader6"),
+                              # downloadButton("deftable1", "Download Table1"),
                               wellPanel(
                                 h5("Normal continuous variables  are summarized with Mean (SD) and t-test(2 groups) or ANOVA(> 2 groups)"),
                                 h5("Non-normal continuous variables are summarized with median [IQR or min,max] and kruskal-wallis test"),
                                 h5("Categorical variables  are summarized with table")
                               )
+                              
                             )
                           )
                           
@@ -253,7 +261,7 @@ ui <- navbarPage("UK biobank",
                             ),
                             mainPanel(
                               withLoader(DTOutput("def_table2"), type="html", loader="loader6"),
-                              
+                              # downloadButton("deftable2", "Download Table2")
                             )
                           )
 
@@ -329,8 +337,8 @@ ui <- navbarPage("UK biobank",
                             sidebarPanel(
                               selectInput("dep_tbsub", "Outcome", choices = varlist$Outcomes, selected = varlist$Outcomes[1]),
                               selectInput("group_tbsub", "Main variable", varlist$Exposure, varlist$Exposure[1]),
-                              selectInput("subgroup_tbsub", "Subgroup to analyze", intersect(varlist[4:5], factor_vars), "sex", multiple = T),
-                              selectInput("cov_tbsub", "Additional covariates", varlist[4:5], selected = NULL, multiple = T),
+                              selectInput("subgroup_tbsub", "Subgroup to analyze", intersect(c(unlist(varlist[5]),"sex"), factor_vars), "sex", multiple = T),
+                              selectInput("cov_tbsub", "Additional covariates", varlist$Covariates, selected = NULL, multiple = T),
                               actionBttn("action_tbsub", "Run subgroup analysis")
                             ),
                             mainPanel(
@@ -612,12 +620,15 @@ server <- function(input, output, session) {
   
   output$def_table1 <- renderDT({
   
-      def_tb1<-CreateTableOne2(data = out,
+      out.for.tb1 <- data()
+      out.for.tb1.label <- data.label()
+        
+      def_tb1<-CreateTableOne2(data = out.for.tb1,
                           vars = unlist(varlist[names(varlist)[c(1,2,4,5)]]),
                           strata = input$def_table1_strata,
                           factorVars = factor_vars,
                           Labels = T,
-                          labeldata=out.label,
+                          labeldata=out.for.tb1.label,
                           includeNA = F,
                           showAllLevels = F)
       out.def_tb1<-datatable(def_tb1,
@@ -634,8 +645,7 @@ server <- function(input, output, session) {
   
   output$def_table2 <- renderDT({
     
-    
-    out.cox<-out
+    out.cox<-data()
     
     for(v in unlist(varlist[2])){
       out.cox[[v]]<-ifelse(out.cox[[v]]=="1",1,0)
@@ -647,7 +657,7 @@ server <- function(input, output, session) {
     # [6] "stroke_haemorrhage_outcome" "MI_all_outcome"             "death"    
     
     fit<-coxph(Surv(dementia_all_day, dementia_all_outcome) ~
-                 age + sex + townsend_deprivation_index + education_college_university_0 + smoking_status_0 + alcohol_status_0 + 
+                 MetS_ATP2005_0 + age + sex + townsend_deprivation_index + education_college_university_0 + smoking_status_0 + alcohol_status_0 + 
                  MET_activity + HMG_CoA_reductase_inhibitors_0 + ANTITHROMBOTIC_AGENTS_0 + CRP_0, data = out.cox, model=TRUE) 
     fit.i<-cox2.display(fit)$table
     def_tb2<-fit.i
@@ -655,49 +665,49 @@ server <- function(input, output, session) {
     def_tb2<-rbind(tr,def_tb2)
     
     fit<-coxph(Surv(dementia_alzheimer_day, dementia_alzheimer_outcome) ~
-                 age + sex + townsend_deprivation_index + education_college_university_0 + smoking_status_0 + alcohol_status_0 + 
+                 MetS_ATP2005_0 + age + sex + townsend_deprivation_index + education_college_university_0 + smoking_status_0 + alcohol_status_0 + 
                  MET_activity + HMG_CoA_reductase_inhibitors_0 + ANTITHROMBOTIC_AGENTS_0 + CRP_0, data = out.cox, model=TRUE) 
     fit.i<-cox2.display(fit)$table
     tr<-t(c("","","","")); rownames(tr)<-c("Alzheimer's dementia")
     def_tb2<-rbind(def_tb2,tr,fit.i)
     
     fit<-coxph(Surv(dementia_vascular_day, dementia_vascular_outcome) ~
-                 age + sex + townsend_deprivation_index + education_college_university_0 + smoking_status_0 + alcohol_status_0 + 
+                 MetS_ATP2005_0 + age + sex + townsend_deprivation_index + education_college_university_0 + smoking_status_0 + alcohol_status_0 + 
                  MET_activity + HMG_CoA_reductase_inhibitors_0 + ANTITHROMBOTIC_AGENTS_0 + CRP_0, data = out.cox, model=TRUE) 
     fit.i<-cox2.display(fit)$table
     tr<-t(c("","","","")); rownames(tr)<-c("Vascular dementia")
     def_tb2<-rbind(def_tb2,tr,fit.i)
     
     fit<-coxph(Surv(stroke_all_day, stroke_all_outcome) ~
-                 age + sex + townsend_deprivation_index + education_college_university_0 + smoking_status_0 + alcohol_status_0 + 
+                 MetS_ATP2005_0 + age + sex + townsend_deprivation_index + education_college_university_0 + smoking_status_0 + alcohol_status_0 + 
                  MET_activity + HMG_CoA_reductase_inhibitors_0 + ANTITHROMBOTIC_AGENTS_0 + CRP_0, data = out.cox, model=TRUE) 
     fit.i<-cox2.display(fit)$table
     tr<-t(c("","","","")); rownames(tr)<-c("All-cause stroke")
     def_tb2<-rbind(def_tb2,tr,fit.i)
     
     fit<-coxph(Surv(stroke_ischaemic_day, stroke_ischaemic_outcome) ~
-                 age + sex + townsend_deprivation_index + education_college_university_0 + smoking_status_0 + alcohol_status_0 + 
+                 MetS_ATP2005_0 + age + sex + townsend_deprivation_index + education_college_university_0 + smoking_status_0 + alcohol_status_0 + 
                  MET_activity + HMG_CoA_reductase_inhibitors_0 + ANTITHROMBOTIC_AGENTS_0 + CRP_0, data = out.cox, model=TRUE) 
     fit.i<-cox2.display(fit)$table
     tr<-t(c("","","","")); rownames(tr)<-c("Ischaemic stroke")
     def_tb2<-rbind(def_tb2,tr,fit.i)
     
     fit<-coxph(Surv(stroke_haemorrhage_day, stroke_haemorrhage_outcome) ~
-                 age + sex + townsend_deprivation_index + education_college_university_0 + smoking_status_0 + alcohol_status_0 + 
+                 MetS_ATP2005_0 + age + sex + townsend_deprivation_index + education_college_university_0 + smoking_status_0 + alcohol_status_0 + 
                  MET_activity + HMG_CoA_reductase_inhibitors_0 + ANTITHROMBOTIC_AGENTS_0 + CRP_0, data = out.cox, model=TRUE) 
     fit.i<-cox2.display(fit)$table
     tr<-t(c("","","","")); rownames(tr)<-c("Haemorrhage stroke")
     def_tb2<-rbind(def_tb2,tr,fit.i)
     
     fit<-coxph(Surv(MI_all_day, MI_all_outcome) ~
-                 age + sex + townsend_deprivation_index + education_college_university_0 + smoking_status_0 + alcohol_status_0 + 
+                 MetS_ATP2005_0 + age + sex + townsend_deprivation_index + education_college_university_0 + smoking_status_0 + alcohol_status_0 + 
                  MET_activity + HMG_CoA_reductase_inhibitors_0 + ANTITHROMBOTIC_AGENTS_0 + CRP_0, data = out.cox, model=TRUE) 
     fit.i<-cox2.display(fit)$table
     tr<-t(c("","","","")); rownames(tr)<-c("Myocardial Infarction")
     def_tb2<-rbind(def_tb2,tr,fit.i)
     
     fit<-coxph(Surv(death_day, death) ~
-                 age + sex + townsend_deprivation_index + education_college_university_0 + smoking_status_0 + alcohol_status_0 + 
+                 MetS_ATP2005_0 + age + sex + townsend_deprivation_index + education_college_university_0 + smoking_status_0 + alcohol_status_0 + 
                  MET_activity + HMG_CoA_reductase_inhibitors_0 + ANTITHROMBOTIC_AGENTS_0 + CRP_0, data = out.cox, model=TRUE) 
     fit.i<-cox2.display(fit)$table
     tr<-t(c("","","","")); rownames(tr)<-c("Death")
@@ -883,6 +893,14 @@ server <- function(input, output, session) {
     
   })
 
+  # output$deftable1 <- downloadHandler(
+  #   filename = function() { "Table1.xlsx" },
+  #   content = function(file) {write_xlsx(out.def_tb1, path = file)}
+  # )
+  # output$deftable2 <- downloadHandler(
+  #   filename = function() { "Table2.xlsx" },
+  #   content = function(file) {write_xlsx(out.def_tb2, path = file)}
+  # )
   
   output$forest <- downloadHandler(
     filename =  function() {
